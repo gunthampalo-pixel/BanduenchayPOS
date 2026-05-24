@@ -440,11 +440,17 @@
                 
                 <div>
                     <div class="flex justify-between items-end mb-1">
-                        <label class="text-xs font-bold text-slate-500 block">ลิงก์รูปภาพ (หรือลิงก์ Google Drive)</label>
+                        <label class="text-xs font-bold text-slate-500 block">รูปภาพเมนูอาหาร</label>
                         <button type="button" onclick="appAdmin.previewImage()" class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"><i class="fa-solid fa-eye"></i> ทดสอบรูป</button>
                     </div>
-                    <input type="text" id="adminMenuImage" oninput="appAdmin.previewImage()" placeholder="https://drive.google.com/..." class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm text-blue-600">
-                    <p class="text-[10px] text-slate-400 mt-1">ก๊อปปี้ลิงก์แชร์จาก Google Drive มาวางได้เลย (อย่าลืมเปิดแชร์เป็น "ทุกคนที่มีลิงก์")</p>
+                    <div class="flex gap-2 items-center">
+                        <input type="text" id="adminMenuImage" oninput="appAdmin.previewImage()" placeholder="วางลิงก์รูปภาพ หรืออัปโหลดไฟล์..." class="flex-1 p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm text-blue-600">
+                        <label class="bg-blue-600 text-white px-4 py-3 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 active:scale-95 transition-all text-center whitespace-nowrap">
+                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> อัปโหลดรูป
+                            <input type="file" id="adminMenuFileInput" accept="image/*" class="hidden" onchange="appAdmin.handleMenuImageUpload(event)">
+                        </label>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1">กดปุ่ม "อัปโหลดรูป" เพื่ออัปโหลดไฟล์จากคลังรูปในเครื่องได้โดยตรง หรือสามารถวางลิงก์รูปได้ครับ</p>
                     
                     <div id="imagePreviewContainer" class="mt-3 hidden bg-white p-2 border border-slate-200 rounded-xl text-center">
                         <img id="imagePreview" src="" class="h-24 mx-auto object-cover rounded-lg shadow-sm hidden">
@@ -582,9 +588,15 @@
                         <input id="promptPayName" class="w-full p-2.5 rounded-xl border bg-white text-sm" placeholder="ชื่อบัญชีที่รับเงิน">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-slate-500">ลิงก์รูป QR Code PromptPay</label>
-                        <input id="promptPayQrUrl" class="w-full p-2.5 rounded-xl border bg-white text-sm" placeholder="วาง URL รูป QR Code PromptPay">
-                        <p class="text-[10px] text-slate-500 mt-1">แนะนำให้อัปโหลดรูป QR ที่ใช้งานจริง แล้วเอาลิงก์มาวาง ระบบจะแสดงในหน้าชำระเงินและใบเสร็จ</p>
+                        <label class="text-xs font-bold text-slate-500 block mb-1">รูปภาพ QR Code PromptPay</label>
+                        <div class="flex gap-2 items-center">
+                            <input id="promptPayQrUrl" class="flex-1 p-2.5 rounded-xl border bg-white text-sm" placeholder="วาง URL รูป หรืออัปโหลดไฟล์...">
+                            <label class="bg-blue-600 text-white px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 active:scale-95 transition-all text-center whitespace-nowrap">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> อัปโหลดรูป
+                                <input type="file" id="promptPayQrFileInput" accept="image/*" class="hidden" onchange="appAdmin.handlePromptPayQrUpload(event)">
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1">กดปุ่ม "อัปโหลดรูป" เพื่อเลือกรูปภาพ QR PromptPay จากมือถือ/คอมพิวเตอร์ของคุณได้โดยตรง หรือวาง URL ก็ได้ครับ</p>
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs font-bold text-slate-500">ข้อความท้ายใบเสร็จ</label>

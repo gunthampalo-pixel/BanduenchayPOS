@@ -828,5 +828,82 @@
                     this.closeAdminMenuFormModal(); await fetchInitialData(); this.renderMenuList(); renderCategories(); filterMenu('All'); 
                 } catch (e) { alert('❌ เกิดข้อผิดพลาด'); } finally { btn.innerHTML = oldText; btn.disabled = false; }
             },
+            compressAndConvertFileToBase64: function(file, maxWidth, maxHeight, quality, callback) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height = Math.round((height * maxWidth) / width);
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width = Math.round((width * maxHeight) / height);
+                                height = maxHeight;
+                            }
+                        }
+
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        callback(null, dataUrl);
+                    };
+                    img.onerror = function() {
+                        callback(new Error("⚠️ ไม่สามารถโหลดรูปภาพได้ครับ"), null);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function() {
+                    callback(new Error("⚠️ อ่านไฟล์รูปภาพไม่สำเร็จครับ"), null);
+                };
+                reader.readAsDataURL(file);
+            },
+            handleMenuImageUpload: function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const self = this;
+                
+                const input = document.getElementById('adminMenuImage');
+                const btn = event.target.parentElement;
+                const oldText = btn.innerHTML;
+                btn.innerHTML = "⏳ กำลังแปลงรูป...";
+                
+                self.compressAndConvertFileToBase64(file, 500, 500, 0.7, function(err, base64Str) {
+                    btn.innerHTML = oldText;
+                    if (err) {
+                        return alert(err.message);
+                    }
+                    input.value = base64Str;
+                    self.previewImage();
+                    alert("✅ อัปโหลดรูปภาพเมนูเรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย)");
+                });
+            },
+            handlePromptPayQrUpload: function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const self = this;
+                
+                const input = document.getElementById('promptPayQrUrl');
+                const btn = event.target.parentElement;
+                const oldText = btn.innerHTML;
+                btn.innerHTML = "⏳ กำลังแปลงรูป...";
+                
+                self.compressAndConvertFileToBase64(file, 600, 600, 0.75, function(err, base64Str) {
+                    btn.innerHTML = oldText;
+                    if (err) {
+                        return alert(err.message);
+                    }
+                    input.value = base64Str;
+                    alert("✅ อัปโหลด PromptPay QR Code เรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย) อย่าลืมกดปุ่ม 'บันทึก' ด้านล่างเพื่อยืนยันการตั้งค่าครับ");
+                });
+            },
             deleteMenu: function(key, name) { showModal('confirm', 'ลบเมนู', `ยืนยันการลบ "${name}" ใช่หรือไม่?`, async () => { try { await fetch(`${FIREBASE_URL}Menu/${key}.json`, { method: 'DELETE' }); logActivity('DELETE_MENU', `ลบเมนูอาหาร: ${name}`); await fetchInitialData(); appAdmin.renderMenuList(); renderCategories(); filterMenu('All'); } catch(e){} }); }
         };
