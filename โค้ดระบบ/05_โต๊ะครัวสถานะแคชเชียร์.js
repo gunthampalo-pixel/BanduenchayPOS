@@ -90,7 +90,7 @@
             const qrBox = document.getElementById('promptPayQrBox');
             if(qrImg) qrImg.src = receipt.promptPayQrUrl || "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP";
             if(qrLabel) qrLabel.innerHTML = `<i class="fa-solid fa-qrcode mr-1"></i> ${receipt.promptPayName ? `PromptPay: ${receipt.promptPayName}` : 'สแกนเพื่อจ่าย'}`;
-            if(qrBox) qrBox.classList.toggle('hidden', !receipt.promptPayQrUrl);
+            if(qrBox) qrBox.classList.remove('hidden');
             const valueEl = document.getElementById('discountValue');
             const reasonEl = document.getElementById('discountReason');
             if(valueEl) valueEl.value = 0;
@@ -132,7 +132,9 @@
                 currentCheckoutKey = null;
                 document.getElementById('qrModal').classList.add('hidden');
                 renderCashier(); renderStatus(); renderKitchen();
-                await fetch(`${FIREBASE_URL}Orders/${keyToUpdate}.json`, { method: 'PATCH', body: JSON.stringify(paidOrder) });
+                const dateKey = getBusinessDateKey(paidAt);
+                await fetch(`${FIREBASE_URL}OrderHistory/${dateKey}/${paidOrder.orderId}.json`, { method: 'PUT', body: JSON.stringify(paidOrder) });
+                await fetch(`${FIREBASE_URL}ActiveOrders/${keyToUpdate}.json`, { method: 'DELETE' });
                 logActivity('PAYMENT', `รับชำระเงิน โต๊ะ ${order.tableNo} ยอดสุทธิ ฿${paidOrder.totalAmount.toLocaleString()}${discount.amount ? ` (ลด ฿${discount.amount.toLocaleString()}: ${discount.reason})` : ''} ด้วย ${method}`);
                 printReceipt(paidOrder, receiptWindow);
                 alert('💰 รับชำระเงินเรียบร้อยแล้ว! เปิดใบเสร็จให้แล้ว');

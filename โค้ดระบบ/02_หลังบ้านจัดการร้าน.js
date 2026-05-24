@@ -196,6 +196,71 @@
                 }
             },
 
+            openClearAuditLogModal: async function() {
+                // เช็คสิทธิ์ก่อน
+                if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
+                let p = currentUser.Permissions || {};
+                const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager');
+                if(!isAdmin) return alert("⚠️ เฉพาะผู้จัดการ (Admin) เท่านั้นที่สามารถล้างประวัติการทำงานได้ครับ");
+
+                document.getElementById('adminClearAuditLogModal').classList.remove('hidden');
+                document.getElementById('auditLogRangeDisplay').innerText = "กำลังตรวจสอบ...";
+                document.getElementById('oldAuditLogsCount').innerText = "0";
+                document.getElementById('clearAuditLogConfirmPin').value = "";
+
+                try {
+                    const cutoffDate = getCleanupCutoffDate();
+                    const cutoffTime = cutoffDate.getTime();
+                    const logsData = await fetchFirebaseJson('AuditLogs');
+                    
+                    const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
+                    document.getElementById('oldAuditLogsCount').innerText = oldLogKeys.length.toLocaleString();
+                    document.getElementById('auditLogRangeDisplay').innerText = `เก่ากว่า ${cutoffDate.toLocaleDateString('th-TH')} (${CLEANUP_RETENTION_DAYS} วัน)`;
+                } catch(e) {
+                     document.getElementById('auditLogRangeDisplay').innerText = `ตรวจสอบไม่สำเร็จ: ${e.message}`;
+                }
+            },
+
+            closeClearAuditLogModal: function() {
+                document.getElementById('adminClearAuditLogModal').classList.add('hidden');
+            },
+
+            executeClearAuditLog: async function() {
+                const pin = document.getElementById('clearAuditLogConfirmPin').value;
+                const expectedPin = String(currentUser?.Password ?? currentUser?.PIN ?? "").trim();
+                if(!expectedPin || String(pin).trim() !== expectedPin) {
+                    return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง!");
+                }
+
+                const cutoffDate = getCleanupCutoffDate();
+                const cutoffTime = cutoffDate.getTime();
+                const okToDelete = confirm(`⚠️ ยืนยันการล้างประวัติการทำงานเก่า ⚠️\n\nระบบจะลบเฉพาะประวัติการทำงาน (Audit Logs) ที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n\nบิลยอดขาย เมนู โต๊ะ และข้อมูลอื่นๆ จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบประวัติการทำงาน`);
+                if (!okToDelete) return;
+
+                const btn = document.getElementById('btnConfirmClearAudit');
+                const oldText = btn.innerHTML;
+                btn.innerHTML = "⏳ กำลังลบประวัติ...";
+                btn.disabled = true;
+
+                try {
+                    const logsData = await fetchFirebaseJson('AuditLogs');
+                    const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
+                    const deletedLogsCount = await deleteKeysInChunks('AuditLogs', oldLogKeys);
+
+                    const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
+                    await logActivity('SYSTEM_WIPE', `ล้างประวัติการทำงานเก่ากว่า ${CLEANUP_RETENTION_DAYS} วัน (ก่อน ${cutoffFormat}) ลบประวัติรวม: ${deletedLogsCount}`);
+
+                    alert(`✅ ล้างประวัติการทำงานเก่ากว่า ${CLEANUP_RETENTION_DAYS} วันเรียบร้อยแล้ว!\n\n🗑️ ลบประวัติการใช้งานรวม: ${deletedLogsCount} รายการ`);
+                    this.closeClearAuditLogModal();
+                    this.fetchAndRenderAuditLogs();
+                } catch (e) {
+                    alert("❌ เกิดข้อผิดพลาดในการลบประวัติ: " + e.message);
+                } finally {
+                    btn.innerHTML = oldText;
+                    btn.disabled = false;
+                }
+            },
+
             // --- ระบบประวัติการทำงาน (Audit Log) ---
             openAuditLogModal: function() {
                 document.getElementById('adminAuditLogModal').classList.remove('hidden');

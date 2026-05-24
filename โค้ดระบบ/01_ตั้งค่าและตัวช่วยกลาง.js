@@ -28,8 +28,10 @@
             const today = new Date();
             today.setHours(today.getHours() - 5); // หักลบเวลาเปิด-ปิดร้าน
             const defaultDateStr = today.toISOString().split('T')[0];
-            const dateInput = document.getElementById('salesDateFilter');
-            if(dateInput) dateInput.value = defaultDateStr;
+            const startInput = document.getElementById('salesDateStart');
+            const endInput = document.getElementById('salesDateEnd');
+            if(startInput) startInput.value = defaultDateStr;
+            if(endInput) endInput.value = defaultDateStr;
         });
         
         // 🌟 ฟังก์ชันส่งข้อมูลประวัติการทำงานไปยัง Firebase (Audit Log)
