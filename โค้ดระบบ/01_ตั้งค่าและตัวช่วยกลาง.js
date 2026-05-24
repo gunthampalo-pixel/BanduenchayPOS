@@ -156,10 +156,11 @@
                 let tblData = await tblRes.json();
                 if(tblData) {
                     if(Array.isArray(tblData)) allTables = tblData.filter(t => t);
-                    else allTables = Object.values(tblData);
+                    else allTables = Object.values(tblData).filter(t => t);
                 }
+                allTables = allTables.map(t => String(t || '').trim()).filter(t => t);
                 if(allTables.length === 0) allTables = ['A1', 'A2', 'B1']; 
-                allTables.sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+                allTables.sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
 
                 res = await fetch(`${FIREBASE_URL}AppSettings.json`);
                 const settingsData = await res.json();

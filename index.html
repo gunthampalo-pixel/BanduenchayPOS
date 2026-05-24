@@ -572,8 +572,15 @@
                         <input id="receiptPhone" class="w-full p-2.5 rounded-xl border bg-white text-sm" placeholder="081-959-1650">
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-slate-500">ลิงก์โลโก้</label>
-                        <input id="receiptLogoUrl" class="w-full p-2.5 rounded-xl border bg-white text-sm" placeholder="วาง URL รูปโลโก้ หรือรูปหัวร้าน">
+                        <label class="text-xs font-bold text-slate-500 block mb-1">โลโก้ร้านค้า</label>
+                        <div class="flex gap-2 items-center">
+                            <input id="receiptLogoUrl" class="flex-1 p-2.5 rounded-xl border bg-white text-sm" placeholder="วาง URL รูป หรืออัปโหลดไฟล์...">
+                            <label class="bg-blue-600 text-white px-3 py-2.5 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 active:scale-95 transition-all text-center whitespace-nowrap">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> อัปโหลดรูป
+                                <input type="file" id="receiptLogoFileInput" accept="image/*" class="hidden" onchange="appAdmin.handleReceiptLogoUpload(event)">
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1">สามารถอัปโหลดไฟล์ภาพโลโก้ร้านเพื่อแสดงในส่วนหัวของใบเสร็จรับเงินได้ครับ</p>
                     </div>
                     <div class="md:col-span-2">
                         <label class="text-xs font-bold text-slate-500">ที่อยู่ร้าน</label>

@@ -563,17 +563,31 @@
                 if(allTables.length === 0) { container.innerHTML = `<p class="text-center text-slate-400 py-4">ยังไม่มีข้อมูลโต๊ะ</p>`; return; }
                 container.innerHTML = allTables.map((tbl, idx) => `<div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center"><span class="font-bold text-slate-800"><i class="fa-solid fa-chair text-slate-400 mr-2"></i> ${tbl}</span><button onclick="appAdmin.deleteTable(${idx})" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash-can"></i></button></div>`).join('');
             },
-            addTable: async function() {
+             addTable: async function() {
                 const name = document.getElementById('newTableName').value.trim();
                 if(!name) return alert('กรุณาใส่ชื่อโต๊ะ');
                 if(allTables.includes(name)) return alert('ชื่อโต๊ะนี้มีอยู่แล้ว');
-                allTables.push(name); allTables.sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
-                try { await fetch(`${FIREBASE_URL}Tables.json`, { method: 'PUT', body: JSON.stringify(allTables) }); document.getElementById('newTableName').value = ''; logActivity('SAVE_TABLE', `เพิ่มผังโต๊ะ: ${name}`); this.renderTableManagerList(); } catch(e) {}
+                allTables.push(name); 
+                allTables = allTables.map(t => String(t || '').trim()).filter(t => t);
+                allTables.sort((a,b) => String(a).localeCompare(String(b), undefined, {numeric: true}));
+                try { 
+                    await fetch(`${FIREBASE_URL}Tables.json`, { method: 'PUT', body: JSON.stringify(allTables) }); 
+                    document.getElementById('newTableName').value = ''; 
+                    logActivity('SAVE_TABLE', `เพิ่มผังโต๊ะ: ${name}`); 
+                    await fetchInitialData();
+                    this.renderTableManagerList(); 
+                } catch(e) {}
             },
             deleteTable: function(idx) {
                 const tblName = allTables[idx];
                 showModal('confirm', 'ลบโต๊ะ', `ยืนยันการลบโต๊ะ "${tblName}" ใช่หรือไม่?`, async () => {
-                    allTables.splice(idx, 1); try { await fetch(`${FIREBASE_URL}Tables.json`, { method: 'PUT', body: JSON.stringify(allTables) }); logActivity('DELETE_TABLE', `ลบผังโต๊ะ: ${tblName}`); appAdmin.renderTableManagerList(); } catch(e) {}
+                    allTables.splice(idx, 1); 
+                    try { 
+                        await fetch(`${FIREBASE_URL}Tables.json`, { method: 'PUT', body: JSON.stringify(allTables) }); 
+                        logActivity('DELETE_TABLE', `ลบผังโต๊ะ: ${tblName}`); 
+                        await fetchInitialData();
+                        appAdmin.renderTableManagerList(); 
+                    } catch(e) {}
                 });
             },
 
@@ -903,6 +917,25 @@
                     }
                     input.value = base64Str;
                     alert("✅ อัปโหลด PromptPay QR Code เรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย) อย่าลืมกดปุ่ม 'บันทึก' ด้านล่างเพื่อยืนยันการตั้งค่าครับ");
+                });
+            },
+            handleReceiptLogoUpload: function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const self = this;
+                
+                const input = document.getElementById('receiptLogoUrl');
+                const btn = event.target.parentElement;
+                const oldText = btn.innerHTML;
+                btn.innerHTML = "⏳ กำลังแปลงรูป...";
+                
+                self.compressAndConvertFileToBase64(file, 400, 400, 0.7, function(err, base64Str) {
+                    btn.innerHTML = oldText;
+                    if (err) {
+                        return alert(err.message);
+                    }
+                    input.value = base64Str;
+                    alert("✅ อัปโหลดรูปโลโก้เรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย) อย่าลืมกดปุ่ม 'บันทึก' ด้านล่างเพื่อยืนยันการตั้งค่าครับ");
                 });
             },
             deleteMenu: function(key, name) { showModal('confirm', 'ลบเมนู', `ยืนยันการลบ "${name}" ใช่หรือไม่?`, async () => { try { await fetch(`${FIREBASE_URL}Menu/${key}.json`, { method: 'DELETE' }); logActivity('DELETE_MENU', `ลบเมนูอาหาร: ${name}`); await fetchInitialData(); appAdmin.renderMenuList(); renderCategories(); filterMenu('All'); } catch(e){} }); }
