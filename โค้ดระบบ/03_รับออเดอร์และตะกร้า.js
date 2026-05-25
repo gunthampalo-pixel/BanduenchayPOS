@@ -1,11 +1,41 @@
         // ==========================================
         // 🛍️ ORDER & CART SYSTEM 
         // ==========================================
+        let activeCategory = 'All';
         function renderCategories() { const categories = ['All', ...new Set(allMenu.map(item => item.Category).filter(Boolean))]; const bar = document.getElementById('category-bar'); bar.innerHTML = categories.map(cat => `<button onclick="filterMenu('${cat}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat === 'All' ? 'active' : ''}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`).join(''); }
         
         function filterMenu(cat, btnElement) { 
+            activeCategory = cat;
             if(btnElement) { document.querySelectorAll('.category-pill').forEach(btn => btn.classList.remove('active')); btnElement.classList.add('active'); } 
-            const grid = document.getElementById('menu-grid'); const filtered = cat === 'All' ? allMenu : allMenu.filter(item => item.Category === cat); 
+            
+            // ล้างช่องค้นหาเมื่อคลิกเปลี่ยนหมวดหมู่
+            const searchInput = document.getElementById('menuSearchInput');
+            if(searchInput && searchInput.value) {
+                searchInput.value = '';
+                document.getElementById('clearMenuSearchBtn')?.classList.add('hidden');
+                document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
+            }
+            
+            renderMenuItems(cat, '');
+        }
+
+        function renderMenuItems(cat, query) {
+            const grid = document.getElementById('menu-grid'); 
+            let filtered = cat === 'All' ? allMenu : allMenu.filter(item => item.Category === cat); 
+            
+            if (query) {
+                const q = query.toLowerCase().trim();
+                filtered = filtered.filter(item => 
+                    (item.Name || '').toLowerCase().includes(q) || 
+                    (item.Category || '').toLowerCase().includes(q)
+                );
+            }
+            
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-2 sm:col-span-3 text-center py-10 text-gray-400 text-sm">🔍 ไม่พบเมนูที่ตรงกับ "${query}"</div>`;
+                return;
+            }
+
             grid.innerHTML = filtered.map((item) => { 
                 let fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop'; 
                 if (item.Category && item.Category.toLowerCase().includes('beverage')) fallbackImg = 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=300&fit=crop'; 
@@ -18,8 +48,80 @@
 
                 let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
                 
-                return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
+                return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer animate-fade-in" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
             }).join(''); 
+        }
+
+        window.searchMenu = function() {
+            const input = document.getElementById('menuSearchInput');
+            const clearBtn = document.getElementById('clearMenuSearchBtn');
+            const sugBox = document.getElementById('menuSearchSuggestions');
+            if(!input) return;
+            
+            const q = input.value.trim();
+            if(q) {
+                clearBtn?.classList.remove('hidden');
+                renderMenuItems(activeCategory, q);
+                renderSearchSuggestions(q);
+            } else {
+                clearBtn?.classList.add('hidden');
+                sugBox?.classList.add('hidden');
+                renderMenuItems(activeCategory, '');
+            }
+        }
+
+        window.clearMenuSearch = function() {
+            const input = document.getElementById('menuSearchInput');
+            if(input) input.value = '';
+            searchMenu();
+        }
+
+        function renderSearchSuggestions(q) {
+            const sugBox = document.getElementById('menuSearchSuggestions');
+            if(!sugBox) return;
+            
+            const query = q.toLowerCase().trim();
+            if(!query) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+            
+            const matches = allMenu.filter(item => (item.Name || '').toLowerCase().includes(query)).slice(0, 5);
+            if(matches.length === 0) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+            
+            sugBox.innerHTML = matches.map(item => {
+                const name = item.Name;
+                const idx = name.toLowerCase().indexOf(query);
+                let highlighted = name;
+                if(idx >= 0) {
+                    highlighted = name.substring(0, idx) + `<b class="text-blue-600 bg-blue-50 font-bold px-0.5 rounded">` + name.substring(idx, idx + query.length) + `</b>` + name.substring(idx + query.length);
+                }
+                
+                let p = item.Price || 0;
+                if(item.Variants && item.Variants.length > 0) p = item.Variants[0].price;
+                
+                return `<button onclick='selectSuggestion(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="w-full text-left p-2.5 text-xs text-slate-700 hover:bg-blue-50 rounded-xl flex justify-between items-center transition-all border-b border-slate-50 last:border-0 active:scale-[0.99]">
+                    <span class="truncate font-semibold"><i class="fa-solid fa-wand-magic-sparkles text-blue-500 mr-2"></i>${highlighted}</span>
+                    <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg font-bold shrink-0 ml-2">฿${p}</span>
+                </button>`;
+            }).join('');
+            
+            sugBox.classList.remove('hidden');
+        }
+
+        window.selectSuggestion = function(item) {
+            const input = document.getElementById('menuSearchInput');
+            if(input) input.value = item.Name;
+            
+            document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
+            handleMenuClick(item);
+            
+            setTimeout(() => {
+                clearMenuSearch();
+            }, 100);
         }
         
         function handleMenuClick(item) { 

@@ -85,6 +85,15 @@
                     </div>
                 </div>
             </div>
+            <!-- 🔍 ช่องค้นหาอัจฉริยะ (Smart Menu Search Bar) -->
+            <div class="relative mb-3">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                <input type="text" id="menuSearchInput" oninput="searchMenu()" placeholder="ค้นหาเมนูอาหาร/เครื่องดื่ม... (พิมพ์ กาแฟ, ข้าว)" class="w-full pl-10 pr-10 p-2.5 rounded-xl border bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                <button id="clearMenuSearchBtn" onclick="clearMenuSearch()" class="hidden absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold w-6 h-6 flex items-center justify-center rounded-full bg-gray-200/50">✕</button>
+                
+                <!-- กล่องช่วยพิมพ์/คำแนะนำอัจฉริยะ (Predictive Autocomplete Suggestions) -->
+                <div id="menuSearchSuggestions" class="hidden absolute left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl z-30 max-h-60 overflow-y-auto mt-1.5 p-2 space-y-1 animate-fade-in"></div>
+            </div>
             <div id="category-bar" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 <button onclick="filterMenu('All')" class="category-pill active px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap">ทั้งหมด</button>
             </div>
