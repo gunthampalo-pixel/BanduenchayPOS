@@ -91,6 +91,14 @@
             if(qrImg) qrImg.src = receipt.promptPayQrUrl || "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP";
             if(qrLabel) qrLabel.innerHTML = `<i class="fa-solid fa-qrcode mr-1"></i> ${receipt.promptPayName ? `PromptPay: ${receipt.promptPayName}` : 'สแกนเพื่อจ่าย'}`;
             if(qrBox) qrBox.classList.remove('hidden');
+            
+            // ซ่อนกล่องส่วนลดท้ายบิลทั้งหมด หากผู้ใช้ไม่มีสิทธิ์ในการให้ส่วนลด
+            const discountBox = document.getElementById('discountBox');
+            const canDiscount = canApproveDiscount();
+            if(discountBox) {
+                discountBox.classList.toggle('hidden', !canDiscount);
+            }
+
             const valueEl = document.getElementById('discountValue');
             const reasonEl = document.getElementById('discountReason');
             if(valueEl) valueEl.value = 0;
