@@ -414,6 +414,9 @@
 
             // --- ระบบจัดการพนักงาน ---
             openStaffManagerModal: function() {
+                if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
+                const p = currentUser.Permissions || {};
+                if(!p.admin) return alert("⚠️ คุณไม่มีสิทธิ์จัดการบัญชีพนักงานครับ");
                 document.getElementById('adminStaffManagerModal').classList.remove('hidden');
                 this.renderStaffList();
             },
@@ -430,11 +433,14 @@
                         let pIcons = "";
                         let p = staff.Permissions;
                         if(p) {
-                            if(p.order) pIcons += "🍔 ";
+                            if(p.order) pIcons += "🛒 ";
                             if(p.kitchen) pIcons += "🧑‍🍳 ";
                             if(p.cashier) pIcons += "💰 ";
                             if(p.discount) pIcons += "🏷️ ";
                             if(p.sales) pIcons += "📊 ";
+                            if(p.menu) pIcons += "🍔 ";
+                            if(p.topping) pIcons += "🥤 ";
+                            if(p.table) pIcons += "🪑 ";
                             if(p.admin) pIcons += "⚙️ ";
                         } else {
                             pIcons = "🔄 รอตั้งค่าสิทธิ์ใหม่";
@@ -472,6 +478,9 @@
                 const cbDiscount = document.getElementById('permDiscount');
                 const cbSales = document.getElementById('permSales');
                 const cbAdmin = document.getElementById('permAdmin');
+                const cbMenu = document.getElementById('permMenu');
+                const cbTopping = document.getElementById('permTopping');
+                const cbTable = document.getElementById('permTable');
 
                 if (id) {
                     const staff = staffData[id];
@@ -488,6 +497,9 @@
                         cbDiscount.checked = staff.Permissions.discount || staff.Permissions.admin || false;
                         cbSales.checked = staff.Permissions.sales || false;
                         cbAdmin.checked = staff.Permissions.admin || false;
+                        cbMenu.checked = staff.Permissions.menu || staff.Permissions.admin || false;
+                        cbTopping.checked = staff.Permissions.topping || staff.Permissions.admin || false;
+                        cbTable.checked = staff.Permissions.table || staff.Permissions.admin || false;
                     } else {
                         const r = (staff.Role || staff.Position || '').toLowerCase();
                         cbOrder.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager');
@@ -496,6 +508,9 @@
                         cbDiscount.checked = r.includes('admin') || r.includes('manager') || r.includes('owner');
                         cbSales.checked = r.includes('admin') || r.includes('manager');
                         cbAdmin.checked = r.includes('admin') || r.includes('manager');
+                        cbMenu.checked = r.includes('admin') || r.includes('manager');
+                        cbTopping.checked = r.includes('admin') || r.includes('manager');
+                        cbTable.checked = r.includes('admin') || r.includes('manager');
                     }
                 } else {
                     modalTitle.innerText = "เพิ่มพนักงานใหม่";
@@ -503,6 +518,7 @@
                     usernameInput.value = "";
                     passwordInput.value = "";
                     cbOrder.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
+                    cbMenu.checked = false; cbTopping.checked = false; cbTable.checked = false;
                 }
                 document.getElementById('adminStaffFormModal').classList.remove('hidden');
             },
@@ -523,10 +539,13 @@
                     cashier: document.getElementById('permCashier').checked,
                     discount: document.getElementById('permDiscount').checked,
                     sales: document.getElementById('permSales').checked,
-                    admin: document.getElementById('permAdmin').checked
+                    admin: document.getElementById('permAdmin').checked,
+                    menu: document.getElementById('permMenu').checked,
+                    topping: document.getElementById('permTopping').checked,
+                    table: document.getElementById('permTable').checked
                 };
                 
-                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin) {
+                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table) {
                     return alert('⚠️ กรุณาติ๊กสิทธิ์การเข้าถึงอย่างน้อย 1 หน้าต่างครับ');
                 }
 
@@ -557,7 +576,13 @@
             },
 
             // --- ระบบจัดการผังโต๊ะ ---
-            openTableManagerModal: function() { document.getElementById('adminTableManagerModal').classList.remove('hidden'); this.renderTableManagerList(); },
+            openTableManagerModal: function() {
+                if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
+                const p = currentUser.Permissions || {};
+                if(!p.admin && !p.table) return alert("⚠️ คุณไม่มีสิทธิ์จัดการผังโต๊ะครับ");
+                document.getElementById('adminTableManagerModal').classList.remove('hidden');
+                this.renderTableManagerList();
+            },
             renderTableManagerList: function() {
                 const container = document.getElementById('adminTableListContainer');
                 if(allTables.length === 0) { container.innerHTML = `<p class="text-center text-slate-400 py-4">ยังไม่มีข้อมูลโต๊ะ</p>`; return; }
@@ -601,7 +626,13 @@
             },
 
             // --- คลังเซ็ตท็อปปิ้ง (Global Toppings) ---
-            openOptionManagerModal: function() { document.getElementById('adminOptionManagerModal').classList.remove('hidden'); this.renderOptionManagerList(); },
+            openOptionManagerModal: function() {
+                if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
+                const p = currentUser.Permissions || {};
+                if(!p.admin && !p.topping) return alert("⚠️ คุณไม่มีสิทธิ์จัดการคลังเซ็ตท็อปปิ้งครับ");
+                document.getElementById('adminOptionManagerModal').classList.remove('hidden');
+                this.renderOptionManagerList();
+            },
             renderOptionManagerList: function() {
                 const container = document.getElementById('adminOptionManagerList');
                 if(globalOptions.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400">ยังไม่มีเซ็ตท็อปปิ้ง</div>`; return; }
@@ -642,7 +673,29 @@
             deleteOptionSet: function(id) { showModal('confirm', 'ลบท็อปปิ้ง', 'ยืนยันการลบเซ็ตท็อปปิ้งนี้ใช่หรือไม่?', async () => { try { await fetch(`${FIREBASE_URL}Options/${id}.json`, { method: 'DELETE' }); logActivity('DELETE_TOPPING', `ลบคลังท็อปปิ้ง (ID: ${id})`); await fetchInitialData(); appAdmin.renderOptionManagerList(); } catch (e) {} }); },
 
             // --- จัดการเมนูอาหาร (Add Menu Form) ---
-            openAdminMenuModal: function() { document.getElementById('adminMenuModal').classList.remove('hidden'); this.renderMenuList(); },
+            openAdminMenuModal: function() {
+                if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
+                const p = currentUser.Permissions || {};
+                if(!p.admin && !p.menu) return alert("⚠️ คุณไม่มีสิทธิ์จัดการเมนูอาหารครับ");
+
+                // โหลดหมวดหมู่ทั้งหมดเข้าตัวกรองด้านบนหลังบ้าน
+                const filterSel = document.getElementById('adminMenuCategoryFilter');
+                if (filterSel) {
+                    const cats = ['All', 'Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
+                    const uniqueCats = [...new Set(cats)];
+                    const oldVal = filterSel.value || 'All';
+                    filterSel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c === 'All' ? 'ทั้งหมด' : c}</option>`).join('');
+                    filterSel.value = uniqueCats.includes(oldVal) ? oldVal : 'All';
+                }
+
+                // รีเซ็ตสถานะ Checkbox และปุ่ม Bulk
+                const selectAllCb = document.getElementById('adminMenuSelectAll');
+                if(selectAllCb) selectAllCb.checked = false;
+                this.updateBulkButtonState();
+
+                document.getElementById('adminMenuModal').classList.remove('hidden');
+                this.renderMenuList();
+            },
             closeAdminMenuModal: function() { document.getElementById('adminMenuModal').classList.add('hidden'); },
             openMenuImportModal: function() {
                 document.getElementById('menuImportText').value = "";
@@ -790,11 +843,62 @@
             renderMenuList: function() {
                 const container = document.getElementById('adminMenuListContainer');
                 if(allMenu.length === 0) { container.innerHTML = `<div class="text-center py-10 text-gray-400">ยังไม่มีข้อมูลเมนู</div>`; return; }
-                const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
+                
+                // โหลดเงื่อนไขตัวกรองหมวดหมู่
+                const filterVal = document.getElementById('adminMenuCategoryFilter')?.value || 'All';
+                let filteredMenu = [...allMenu];
+                if (filterVal !== 'All') {
+                    filteredMenu = filteredMenu.filter(m => m.Category === filterVal);
+                }
+                
+                const sortedMenu = filteredMenu.sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
+                
+                if (sortedMenu.length === 0) {
+                    container.innerHTML = `<div class="text-center py-10 text-slate-400 text-sm font-semibold">ไม่พบรายการเมนูอาหารในหมวดหมู่นี้</div>`;
+                    return;
+                }
+
                 container.innerHTML = sortedMenu.map(item => {
                     let imgUrl = item.ImageURL ? this.convertDriveLink(item.ImageURL) : 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop';
-                    return `<div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between"><div class="flex items-center gap-3 overflow-hidden"><div class="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop'"></div><div><p class="font-bold text-slate-800 text-sm line-clamp-1">${item.Name}</p><div class="flex gap-2 items-center mt-0.5"><span class="text-xs font-semibold text-blue-600">฿${item.Price || (item.Variants && item.Variants[0] ? item.Variants[0].price : 0)}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">${item.Category || 'ทั่วไป'}</span></div></div></div><div class="flex gap-1 shrink-0"><button onclick="appAdmin.openAdminMenuFormModal('${item._key}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center active:scale-90"><i class="fa-solid fa-pen"></i></button><button onclick="appAdmin.deleteMenu('${item._key}', '${item.Name}')" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash-can"></i></button></div></div>`;
+                    
+                    // แสดงลิสต์ท็อปปิ้งที่ผูกอยู่ย่อ
+                    let toppingsText = "";
+                    if (item.OptionSets && item.OptionSets.length > 0) {
+                        const names = item.OptionSets.map(optId => {
+                            const f = globalOptions.find(o => o.id === optId);
+                            return f ? f.name : optId;
+                        });
+                        toppingsText = `<p class="text-[10px] text-indigo-500 font-semibold mt-0.5"><i class="fa-solid fa-list-check mr-1"></i>ท็อปปิ้ง: ${names.join(', ')}</p>`;
+                    }
+
+                    return `
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:border-blue-300 transition-colors">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <!-- Checkbox สำหรับ Bulk Actions -->
+                            <input type="checkbox" data-key="${item._key}" onchange="appAdmin.updateBulkButtonState()" class="admin-menu-select w-5 h-5 text-blue-600 rounded cursor-pointer shrink-0">
+                            
+                            <div class="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0">
+                                <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&h=100&fit=crop'">
+                            </div>
+                            
+                            <div>
+                                <p class="font-bold text-slate-800 text-sm line-clamp-1">${item.Name}</p>
+                                <div class="flex gap-2 items-center mt-0.5 flex-wrap">
+                                    <span class="text-xs font-semibold text-blue-600">฿${item.Price || (item.Variants && item.Variants[0] ? item.Variants[0].price : 0)}</span>
+                                    <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold">${item.Category || 'ทั่วไป'}</span>
+                                </div>
+                                ${toppingsText}
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-1 shrink-0">
+                            <button onclick="appAdmin.openAdminMenuFormModal('${item._key}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center active:scale-90"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="appAdmin.deleteMenu('${item._key}', '${item.Name}')" class="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>`;
                 }).join('');
+                
+                this.updateBulkButtonState();
             },
             openAdminMenuFormModal: function(key = null) {
                 this.editingMenuKey = key; const cats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))]; const uniqueCats = [...new Set(cats)]; const sel = document.getElementById('adminMenuCategory'); sel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -938,5 +1042,218 @@
                     alert("✅ อัปโหลดรูปโลโก้เรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย) อย่าลืมกดปุ่ม 'บันทึก' ด้านล่างเพื่อยืนยันการตั้งค่าครับ");
                 });
             },
-            deleteMenu: function(key, name) { showModal('confirm', 'ลบเมนู', `ยืนยันการลบ "${name}" ใช่หรือไม่?`, async () => { try { await fetch(`${FIREBASE_URL}Menu/${key}.json`, { method: 'DELETE' }); logActivity('DELETE_MENU', `ลบเมนูอาหาร: ${name}`); await fetchInitialData(); appAdmin.renderMenuList(); renderCategories(); filterMenu('All'); } catch(e){} }); }
+            deleteMenu: function(key, name) { showModal('confirm', 'ลบเมนู', `ยืนยันการลบ "${name}" ใช่หรือไม่?`, async () => { try { await fetch(`${FIREBASE_URL}Menu/${key}.json`, { method: 'DELETE' }); logActivity('DELETE_MENU', `ลบเมนูอาหาร: ${name}`); await fetchInitialData(); appAdmin.renderMenuList(); renderCategories(); filterMenu('All'); } catch(e){} }); },
+
+            // 🌟 เพิ่มปุ่มเลือกทั้งหมด/สลับการเลือกอาหาร 🌟
+            toggleSelectAllMenu: function(selectAllEl) {
+                const checked = selectAllEl.checked;
+                document.querySelectorAll('.admin-menu-select').forEach(cb => {
+                    cb.checked = checked;
+                });
+                this.updateBulkButtonState();
+            },
+
+            // 🌟 อัปเดตยอดการเลือกและแสดงผลปุ่ม Bulk Topping 🌟
+            updateBulkButtonState: function() {
+                const selectedCbs = document.querySelectorAll('.admin-menu-select:checked');
+                const bulkBtn = document.getElementById('adminMenuBulkBtn');
+                const countLabel = document.getElementById('adminMenuSelectedCount');
+                if (bulkBtn && countLabel) {
+                    if (selectedCbs.length > 0) {
+                        bulkBtn.classList.remove('hidden');
+                        countLabel.innerText = selectedCbs.length;
+                    } else {
+                        bulkBtn.classList.add('hidden');
+                        countLabel.innerText = 0;
+                        const selectAllCb = document.getElementById('adminMenuSelectAll');
+                        if(selectAllCb) selectAllCb.checked = false;
+                    }
+                }
+            },
+
+            // 🌟 เปิดหน้าต่างผูกท็อปปิ้งแบบกลุ่ม (Bulk Topping Modal) 🌟
+            openBulkToppingModal: function() {
+                const selectedCbs = document.querySelectorAll('.admin-menu-select:checked');
+                if (selectedCbs.length === 0) return alert("⚠️ กรุณาเลือกรายการเมนูอย่างน้อย 1 รายการครับ");
+
+                const countLabel = document.getElementById('bulkToppingSelectedMenuCount');
+                if (countLabel) countLabel.innerText = selectedCbs.length;
+
+                // ดึงหมวดหมู่ทั้งหมดไปใส่ในกล่องย้ายหมวดหมู่แบบกลุ่ม
+                const catSelect = document.getElementById('bulkCategorySelect');
+                if (catSelect) {
+                    const cats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
+                    const uniqueCats = [...new Set(cats)];
+                    catSelect.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
+                }
+
+                const container = document.getElementById('bulkToppingOptionsContainer');
+                if (container) {
+                    if (globalOptions.length === 0) {
+                        container.innerHTML = `<p class="text-xs text-slate-400 p-2 text-center font-bold">ยังไม่มีคลังเซ็ตท็อปปิ้งในระบบครับ</p>`;
+                    } else {
+                        container.innerHTML = globalOptions.map(opt => `
+                            <label class="flex items-start gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer bg-white hover:bg-indigo-50 transition-colors shadow-sm">
+                                <input type="checkbox" value="${opt.id}" class="bulk-opt-set-cb mt-0.5 w-5 h-5 text-indigo-600 rounded cursor-pointer">
+                                <div>
+                                    <p class="font-bold text-slate-800 text-sm">${opt.name}</p>
+                                    <p class="text-[10px] text-slate-500 mt-0.5 font-semibold">${(opt.items || []).map(i => i.name).join(', ')}</p>
+                                </div>
+                            </label>
+                        `).join('');
+                    }
+                }
+
+                document.getElementById('adminBulkToppingModal').classList.remove('hidden');
+            },
+
+            // 🌟 ปฏิบัติการผูก/ถอน ท็อปปิ้งแบบกลุ่ม (Bulk Actions) 🌟
+            executeBulkToppingAction: async function(action) {
+                const selectedCbs = document.querySelectorAll('.admin-menu-select:checked');
+                if (selectedCbs.length === 0) return alert("⚠️ ไม่พบรายการเมนูที่เลือกไว้");
+
+                const selectedMenuKeys = Array.from(selectedCbs).map(cb => cb.getAttribute('data-key')).filter(Boolean);
+                const selectedToppingIds = Array.from(document.querySelectorAll('.bulk-opt-set-cb:checked')).map(cb => cb.value);
+
+                if (action !== 'clear' && selectedToppingIds.length === 0) {
+                    return alert("⚠️ กรุณาเลือกท็อปปิ้งอย่างน้อย 1 เซ็ตเพื่อสั่งดำเนินการครับ");
+                }
+
+                let confirmMsg = "";
+                if (action === 'bind') confirmMsg = `ยืนยันการ "ผูกเซ็ตท็อปปิ้งเพิ่ม" ${selectedToppingIds.length} กลุ่ม ให้กับเมนูทั้ง ${selectedMenuKeys.length} รายการใช่หรือไม่?`;
+                else if (action === 'unbind') confirmMsg = `ยืนยันการ "ยกเลิกการผูกเซ็ต" ${selectedToppingIds.length} กลุ่ม ออกจากเมนูทั้ง ${selectedMenuKeys.length} รายการใช่หรือไม่?`;
+                else if (action === 'clear') confirmMsg = `⚠️ ยืนยันการ "ล้างเซ็ตท็อปปิ้งทั้งหมด" ของเมนูที่เลือกทั้ง ${selectedMenuKeys.length} รายการใช่หรือไม่? (เมนูเหล่านี้จะไม่มีท็อปปิ้งเหลืออยู่เลย)`;
+
+                if (!confirm(confirmMsg)) return;
+
+                const patch = {};
+                selectedMenuKeys.forEach(key => {
+                    const menu = allMenu.find(m => m._key === key);
+                    if (menu) {
+                        let currentOptionSets = menu.OptionSets ? [...menu.OptionSets] : [];
+                        
+                        if (action === 'bind') {
+                            // รวมลิสต์ท็อปปิ้งแบบไม่ซ้ำ
+                            selectedToppingIds.forEach(id => {
+                                if (!currentOptionSets.includes(id)) {
+                                    currentOptionSets.push(id);
+                                }
+                            });
+                        } else if (action === 'unbind') {
+                            // กรองเอาท็อปปิ้งออก
+                            currentOptionSets = currentOptionSets.filter(id => !selectedToppingIds.includes(id));
+                        } else if (action === 'clear') {
+                            // ล้างท็อปปิ้งทั้งหมด
+                            currentOptionSets = [];
+                        }
+
+                        patch[key] = {
+                            ...menu,
+                            _key: undefined, // ลบ helper key ออกตอนบันทึก Firebase
+                            OptionSets: currentOptionSets
+                        };
+                    }
+                });
+
+                // ปรับปุ่มการทำรายการ
+                const btn = document.activeElement;
+                const oldText = btn ? btn.innerHTML : "";
+                if (btn) {
+                    btn.innerHTML = "⏳ กำลังดำเนินการ...";
+                    btn.disabled = true;
+                }
+
+                try {
+                    await patchFirebase('Menu', patch);
+                    await logActivity('BULK_TOPPING_UPDATE', `จัดการท็อปปิ้งแบบกลุ่ม (${action}) ให้เมนูรวม ${selectedMenuKeys.length} รายการ`);
+                    alert("✅ จัดการท็อปปิ้งกลุ่มเรียบร้อยแล้วครับ!");
+                    
+                    document.getElementById('adminBulkToppingModal').classList.add('hidden');
+                    
+                    // เคลียร์ค่าตัวติ๊กเลือกทั้งหมด
+                    const selectAllCb = document.getElementById('adminMenuSelectAll');
+                    if(selectAllCb) selectAllCb.checked = false;
+                    
+                    await fetchInitialData();
+                    this.renderMenuList();
+                    renderCategories();
+                    filterMenu('All');
+                } catch (e) {
+                    alert("❌ จัดการท็อปปิ้งแบบกลุ่มไม่สำเร็จ: " + e.message);
+                } finally {
+                    if (btn) {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                }
+            },
+
+            // 🌟 เพิ่มตัวเลือกหมวดหมู่ย่อยใหม่ในแผงย้ายหมวดหมู่แบบกลุ่ม 🌟
+            addBulkCategoryOption: function() {
+                const newCat = prompt("พิมพ์ชื่อหมวดหมู่ใหม่ที่ต้องการสร้าง:");
+                if(newCat) {
+                    const sel = document.getElementById('bulkCategorySelect');
+                    if (sel) {
+                        sel.insertAdjacentHTML('beforeend', `<option value="${newCat}">${newCat}</option>`);
+                        sel.value = newCat;
+                    }
+                }
+            },
+
+            // 🌟 ปฏิบัติการเปลี่ยนหมวดหมู่แบบกลุ่ม (Bulk Category Change) 🌟
+            executeBulkCategoryChange: async function() {
+                const selectedCbs = document.querySelectorAll('.admin-menu-select:checked');
+                if (selectedCbs.length === 0) return alert("⚠️ ไม่พบรายการเมนูที่เลือกไว้");
+
+                const selectedMenuKeys = Array.from(selectedCbs).map(cb => cb.getAttribute('data-key')).filter(Boolean);
+                const targetCategory = document.getElementById('bulkCategorySelect').value;
+
+                if (!targetCategory) return alert("⚠️ กรุณาเลือกหมวดหมู่ปลายทางครับ");
+
+                const confirmMsg = `ยืนยันการย้ายหมวดหมู่ของเมนูที่เลือกทั้ง ${selectedMenuKeys.length} รายการ ไปยังหมวดหมู่ "${targetCategory}" ใช่หรือไม่?`;
+                if (!confirm(confirmMsg)) return;
+
+                const patch = {};
+                selectedMenuKeys.forEach(key => {
+                    const menu = allMenu.find(m => m._key === key);
+                    if (menu) {
+                        patch[key] = {
+                            ...menu,
+                            _key: undefined, // ลบ helper key ออกก่อนเซฟ Firebase
+                            Category: targetCategory
+                        };
+                    }
+                });
+
+                const btn = document.activeElement;
+                const oldText = btn ? btn.innerHTML : "";
+                if (btn) {
+                    btn.innerHTML = "⏳ กำลังย้าย...";
+                    btn.disabled = true;
+                }
+
+                try {
+                    await patchFirebase('Menu', patch);
+                    await logActivity('BULK_CATEGORY_UPDATE', `เปลี่ยนหมวดหมู่เมนูเป็น "${targetCategory}" รวม ${selectedMenuKeys.length} รายการ`);
+                    alert(`✅ ย้ายหมวดหมู่ของเมนู ${selectedMenuKeys.length} รายการ ไปยัง "${targetCategory}" สำเร็จเรียบร้อยแล้วครับ!`);
+                    
+                    document.getElementById('adminBulkToppingModal').classList.add('hidden');
+                    
+                    // เคลียร์ค่าตัวติ๊กเลือกทั้งหมด
+                    const selectAllCb = document.getElementById('adminMenuSelectAll');
+                    if(selectAllCb) selectAllCb.checked = false;
+                    
+                    await fetchInitialData();
+                    this.renderMenuList();
+                    renderCategories();
+                    filterMenu('All');
+                } catch (e) {
+                    alert("❌ เปลี่ยนหมวดหมู่แบบกลุ่มไม่สำเร็จ: " + e.message);
+                } finally {
+                    if (btn) {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                }
+            }
         };

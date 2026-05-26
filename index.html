@@ -188,32 +188,32 @@
         
         <div class="p-4 space-y-4">
             <div class="grid grid-cols-2 gap-3">
-                <button onclick="appAdmin.openAdminMenuModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnMenu" onclick="appAdmin.openAdminMenuModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-blue-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-burger"></i></div>
                     <span class="text-sm font-bold text-slate-700">จัดการเมนูอาหาร</span>
                 </button>
-                <button onclick="appAdmin.openOptionManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnTopping" onclick="appAdmin.openOptionManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-list-check"></i></div>
                     <span class="text-sm font-bold text-slate-700">คลังเซ็ตท็อปปิ้ง</span>
                 </button>
-                <button onclick="appAdmin.openTableManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-orange-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnTable" onclick="appAdmin.openTableManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-orange-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-map-location-dot"></i></div>
                     <span class="text-sm font-bold text-slate-700">จัดการผังโต๊ะ</span>
                 </button>
-                <button onclick="appAdmin.openStaffManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-purple-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnStaff" onclick="appAdmin.openStaffManagerModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-purple-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-users-gear"></i></div>
                     <span class="text-sm font-bold text-slate-700">จัดการพนักงาน</span>
                 </button>
-                <button onclick="appAdmin.openOwnerSettingsModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnReceipt" onclick="appAdmin.openOwnerSettingsModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-emerald-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-receipt"></i></div>
                     <span class="text-sm font-bold text-slate-700 text-center">ตั้งค่าใบเสร็จ<br><span class="text-[10px] font-normal text-slate-400">Owner Only</span></span>
                 </button>
-                <button onclick="appAdmin.openAuditLogModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-rose-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnAudit" onclick="appAdmin.openAuditLogModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-rose-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-clock-rotate-left"></i></div>
                     <span class="text-sm font-bold text-slate-700 text-center">ประวัติการทำงาน<br><span class="text-[10px] font-normal text-slate-400">(Audit Log)</span></span>
                 </button>
                 <!-- 🌟 ปุ่มล้างข้อมูลประจำเดือน (Clear Data Range) 🌟 -->
-                <button onclick="appAdmin.openClearDataModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-red-400 hover:shadow-md transition-all active:scale-95">
+                <button id="adminBtnClear" onclick="appAdmin.openClearDataModal()" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 hover:border-red-400 hover:shadow-md transition-all active:scale-95">
                     <div class="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center text-xl"><i class="fa-solid fa-trash-arrow-up"></i></div>
                     <span class="text-sm font-bold text-slate-700 text-center">ล้างข้อมูล (เคลียร์ยอด)<br><span class="text-[10px] font-normal text-slate-400">(Clear Data)</span></span>
                 </button>
@@ -323,7 +323,22 @@
 
                         <label class="flex items-center gap-3 p-3 bg-purple-50 border border-purple-200 rounded-xl cursor-pointer hover:bg-purple-100">
                             <input type="checkbox" id="permAdmin" class="w-5 h-5 text-purple-600 rounded">
-                            <div class="flex-1"><p class="text-sm font-bold text-purple-800">จัดการร้าน (Admin)</p><p class="text-[10px] text-purple-600">แก้ไขเมนูอาหาร, โต๊ะ และรหัสพนักงานคนอื่น</p></div>
+                            <div class="flex-1"><p class="text-sm font-bold text-purple-800">จัดการร้าน (Admin ทั้งหมด)</p><p class="text-[10px] text-purple-600">แก้ไขเมนูอาหาร, โต๊ะ, รหัสพนักงาน, ใบเสร็จ, ลบข้อมูล</p></div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" id="permMenu" class="w-5 h-5 text-blue-600 rounded">
+                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">จัดการเมนูอาหาร (สิทธิ์ย่อย)</p><p class="text-[10px] text-slate-500">สามารถแก้ไข/เพิ่ม/ลบเมนูอาหารในระบบ</p></div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" id="permTopping" class="w-5 h-5 text-indigo-600 rounded">
+                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">จัดการคลังท็อปปิ้ง (สิทธิ์ย่อย)</p><p class="text-[10px] text-slate-500">สามารถแก้ไข/เพิ่ม/ลบเซ็ตและรายการท็อปปิ้ง</p></div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" id="permTable" class="w-5 h-5 text-orange-600 rounded">
+                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">จัดการผังโต๊ะ (สิทธิ์ย่อย)</p><p class="text-[10px] text-slate-500">สามารถแก้ไข/เพิ่ม/ลบผังโต๊ะอาหารในร้าน</p></div>
                         </label>
                     </div>
                 </div>
@@ -368,6 +383,24 @@
                 <button onclick="appAdmin.exportMenuToExcel()" class="bg-green-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all">
                     <i class="fa-solid fa-file-excel mr-1"></i> โหลด Excel
                 </button>
+            </div>
+            <!-- 🌟 แผงฟิลเตอร์หมวดหมู่ & จัดการท็อปปิ้งกลุ่ม (Bulk Actions) 🌟 -->
+            <div class="px-4 py-2 bg-slate-100 border-b flex flex-wrap items-center justify-between gap-2 shadow-inner">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-500"><i class="fa-solid fa-filter text-slate-400"></i> หมวดหมู่:</span>
+                    <select id="adminMenuCategoryFilter" onchange="appAdmin.renderMenuList()" class="p-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold outline-none cursor-pointer focus:ring-1 focus:ring-blue-500">
+                        <option value="All">ทั้งหมด</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-1.5 text-xs text-slate-600 font-semibold cursor-pointer">
+                        <input type="checkbox" id="adminMenuSelectAll" onchange="appAdmin.toggleSelectAllMenu(this)" class="w-4 h-4 text-blue-600 rounded">
+                        เลือกทั้งหมด
+                    </label>
+                    <button onclick="appAdmin.openBulkToppingModal()" id="adminMenuBulkBtn" class="hidden bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all">
+                        <i class="fa-solid fa-layer-group mr-1 animate-pulse"></i> จัดการท็อปปิ้งกลุ่ม (<span id="adminMenuSelectedCount">0</span>)
+                    </button>
+                </div>
             </div>
             <div id="adminMenuListContainer" class="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50"></div>
         </div>
@@ -704,6 +737,54 @@
             <div class="p-4 border-t bg-slate-50 flex gap-3">
                 <button onclick="appAdmin.closeClearDataModal()" class="flex-1 bg-white border border-slate-300 text-slate-700 py-3 rounded-xl font-bold hover:bg-slate-50 active:scale-95 transition-all">ยกเลิก</button>
                 <button onclick="appAdmin.executeClearData()" id="btnConfirmClear" class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold shadow-md hover:bg-red-700 active:scale-95 transition-all"><i class="fa-solid fa-triangle-exclamation mr-1"></i> ยืนยันการลบ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🌟 Modal: จัดการผูกท็อปปิ้งกลุ่ม (Bulk Topping Modal) 🌟 -->
+    <div id="adminBulkToppingModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[95] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b bg-indigo-600 text-white flex justify-between items-center animate-fade-in">
+                <h2 class="text-lg font-bold"><i class="fa-solid fa-layer-group mr-2"></i>จัดการเมนูกลุ่ม (Bulk Manager)</h2>
+                <button onclick="document.getElementById('adminBulkToppingModal').classList.add('hidden')" class="text-white text-xl font-bold">✕</button>
+            </div>
+            <div class="p-5 flex-1 overflow-y-auto space-y-5">
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-inner">
+                    <p class="text-xs text-slate-500">จำนวนเมนูที่เลือกไว้</p>
+                    <p class="text-lg font-bold text-blue-600"><span id="bulkToppingSelectedMenuCount">0</span> รายการเมนู</p>
+                </div>
+                
+                <!-- 🌟 ย้ายหมวดหมู่แบบกลุ่ม (Bulk Category Change) 🌟 -->
+                <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-200 space-y-3 shadow-sm">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-slate-800"><i class="fa-solid fa-folder-tree text-blue-500 mr-1"></i> ย้ายหมวดหมู่ของเมนูที่เลือก</label>
+                        <button onclick="appAdmin.addBulkCategoryOption()" class="text-blue-600 hover:text-blue-800 text-[10px] font-bold bg-blue-100/50 px-2 py-0.5 rounded">+ เพิ่มหมวดหมู่ใหม่</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="bulkCategorySelect" class="flex-1 p-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold outline-none cursor-pointer focus:ring-1 focus:ring-blue-500"></select>
+                        <button onclick="appAdmin.executeBulkCategoryChange()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-xl font-bold text-xs shadow-md active:scale-95 transition-all whitespace-nowrap">ย้ายหมวดหมู่</button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-200 border-dashed">
+
+                <div>
+                    <label class="text-xs font-bold text-slate-800 block mb-2"><i class="fa-solid fa-square-check text-indigo-500 mr-1"></i> เลือกเซ็ตท็อปปิ้งที่ต้องการจัดการ</label>
+                    <div class="grid grid-cols-1 gap-2" id="bulkToppingOptionsContainer"></div>
+                </div>
+            </div>
+            <div class="p-4 border-t bg-slate-50 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="appAdmin.executeBulkToppingAction('bind')" class="bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all">
+                        ➕ ผูกเซ็ตท็อปปิ้งเพิ่ม
+                    </button>
+                    <button onclick="appAdmin.executeBulkToppingAction('unbind')" class="bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-xl font-bold text-sm shadow-sm active:scale-95 transition-all">
+                        ➖ ยกเลิกการผูกเซ็ต
+                    </button>
+                </div>
+                <button onclick="appAdmin.executeBulkToppingAction('clear')" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 py-3 rounded-xl font-bold text-sm active:scale-95 transition-all">
+                    🧹 ล้างเซ็ตท็อปปิ้งของเมนูเหล่านี้ทั้งหมด
+                </button>
             </div>
         </div>
     </div>

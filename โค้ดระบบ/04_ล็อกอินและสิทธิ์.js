@@ -40,7 +40,7 @@
                 if(p.kitchen) { navKitchen.style.display = 'flex'; navStatus.style.display = 'flex'; }
                 if(p.cashier) { navCashier.style.display = 'flex'; navStatus.style.display = 'flex'; }
                 if(p.sales) navSales.style.display = 'flex';
-                if(p.admin) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
+                if(p.admin || p.menu || p.topping || p.table) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
             } else {
                 const roleStr = (user.Role || user.Position || "").toLowerCase(); 
                 let isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ'); 
@@ -52,6 +52,33 @@
                     if (roleStr.includes('waiter') || roleStr.includes('สั่งอาหาร')) { navOrder.style.display = 'flex'; navStatus.style.display = 'flex'; } 
                     if (roleStr.includes('kitchen') || roleStr.includes('ครัว') || roleStr.includes('bar')) { navKitchen.style.display = 'flex'; navStatus.style.display = 'flex'; } 
                     if (roleStr.includes('cashier') || roleStr.includes('แคชเชียร์')) { navCashier.style.display = 'flex'; navStatus.style.display = 'flex'; } 
+                }
+            }
+
+            // 🌟 ซ่อน/แสดง ปุ่มบน Admin Dashboard ตามสิทธิ์พนักงานแต่ละคน 🌟
+            const btnMenu = document.getElementById('adminBtnMenu');
+            const btnTopping = document.getElementById('adminBtnTopping');
+            const btnTable = document.getElementById('adminBtnTable');
+            const btnStaff = document.getElementById('adminBtnStaff');
+            const btnReceipt = document.getElementById('adminBtnReceipt');
+            const btnAudit = document.getElementById('adminBtnAudit');
+            const btnClear = document.getElementById('adminBtnClear');
+
+            if (btnMenu && btnTopping && btnTable && btnStaff && btnReceipt && btnAudit && btnClear) {
+                if (p) {
+                    btnMenu.style.display = (p.admin || p.menu) ? 'flex' : 'none';
+                    btnTopping.style.display = (p.admin || p.topping) ? 'flex' : 'none';
+                    btnTable.style.display = (p.admin || p.table) ? 'flex' : 'none';
+                    btnStaff.style.display = p.admin ? 'flex' : 'none';
+                    btnReceipt.style.display = p.admin ? 'flex' : 'none';
+                    btnAudit.style.display = p.admin ? 'flex' : 'none';
+                    btnClear.style.display = p.admin ? 'flex' : 'none';
+                } else {
+                    const roleStr = (user.Role || user.Position || "").toLowerCase();
+                    const isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ');
+                    [btnMenu, btnTopping, btnTable, btnStaff, btnReceipt, btnAudit, btnClear].forEach(btn => {
+                        btn.style.display = isManager ? 'flex' : 'none';
+                    });
                 }
             }
 
