@@ -217,8 +217,8 @@
                 return;
             }
             
-            let hasComplexData = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup;
-            if(hasComplexData) { openOptionModal(item); } else { let p = item.Price || 0; if(item.Variants && item.Variants.length > 0) p = item.Variants[0].price; addToCart(item.Name, p, "", item.Category); }
+            // เปิดหน้าต่างตัวเลือกและหมายเหตุพิเศษเสมอ
+            openOptionModal(item);
         }
 
         // 🌟 ปิดกล่องคำแนะนำการค้นหาเมื่อคลิกนอกพื้นที่ค้นหา
@@ -399,27 +399,39 @@
                     itemHtml += `<div class="mt-4 pt-3 border-t border-dashed border-slate-200 space-y-3" onclick="event.stopPropagation()">`;
 
                     if (refMenu.Variants && refMenu.Variants.length > 1) {
-                        itemHtml += `
-                        <div>
-                            <label class="text-[10px] font-bold text-slate-500 mb-1.5 block">รูปแบบ / ขนาด (เลือก 1 อย่าง)</label>
-                            <div class="grid grid-cols-2 gap-2">
-                        `;
-                        refMenu.Variants.forEach((v, idx) => {
-                            const varSelected = itemSelectionDetails.variant === v.name || (!itemSelectionDetails.variant && idx === 0);
-                            if (varSelected && !itemSelectionDetails.variant) {
-                                itemSelectionDetails.variant = v.name;
-                            }
-                            const vClass = varSelected ? 'border-blue-500 bg-white font-bold text-blue-600' : 'border-slate-200 bg-slate-50 text-slate-600';
+                        const isVarLocked = stepItem.variant && stepItem.variant !== "";
+                        
+                        if (isVarLocked) {
+                            itemSelectionDetails.variant = stepItem.variant;
                             itemHtml += `
-                            <button type="button" onclick="updateComboSubItemVariant('${stepItem.menuKey}', '${v.name}')" class="p-2 border text-xs rounded-xl text-center active:scale-95 transition-all truncate ${vClass}">
-                                ${v.name} (+฿${v.price})
-                            </button>
-                            `;
-                        });
-                        itemHtml += `
+                            <div class="bg-slate-100/80 p-2.5 rounded-xl border border-slate-200">
+                                <p class="text-[10px] font-bold text-slate-500 mb-0.5">รูปแบบบังคับในเซ็ต</p>
+                                <p class="text-xs font-bold text-slate-700"><i class="fa-solid fa-lock mr-1 text-slate-400"></i> ${stepItem.variant}</p>
                             </div>
-                        </div>
-                        `;
+                            `;
+                        } else {
+                            itemHtml += `
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 mb-1.5 block">รูปแบบ / ขนาด (เลือก 1 อย่าง)</label>
+                                <div class="grid grid-cols-2 gap-2">
+                            `;
+                            refMenu.Variants.forEach((v, idx) => {
+                                const varSelected = itemSelectionDetails.variant === v.name || (!itemSelectionDetails.variant && idx === 0);
+                                if (varSelected && !itemSelectionDetails.variant) {
+                                    itemSelectionDetails.variant = v.name;
+                                }
+                                const vClass = varSelected ? 'border-blue-500 bg-white font-bold text-blue-600' : 'border-slate-200 bg-slate-50 text-slate-600';
+                                itemHtml += `
+                                <button type="button" onclick="updateComboSubItemVariant('${stepItem.menuKey}', '${v.name}')" class="p-2 border text-xs rounded-xl text-center active:scale-95 transition-all truncate ${vClass}">
+                                    ${v.name} (+฿${v.price})
+                                </button>
+                                `;
+                            });
+                            itemHtml += `
+                                </div>
+                            </div>
+                            `;
+                        }
                     }
 
                     if (refMenu.OptionSets && refMenu.OptionSets.length > 0) {
@@ -483,10 +495,15 @@
         window.selectComboStepItem = function(menuKey, extraPrice, name) {
             const step = currentComboItem.ComboSteps[comboCurrentStepIndex];
             const refMenu = allMenu.find(m => m._key === menuKey);
+            const stepItem = step.items.find(i => i.menuKey === menuKey);
             const stepType = step.type || (step.items.length === 1 ? 'fixed_all' : 'pick_one');
             
             let selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
             
+            const initialVariant = (stepItem && stepItem.variant) 
+                ? stepItem.variant 
+                : ((refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '');
+
             if (stepType === 'pick_one') {
                 const isSelected = selections.some(sel => sel.menuKey === menuKey);
                 if (isSelected) {
@@ -499,7 +516,7 @@
                         menuKey: menuKey,
                         name: name,
                         extraPrice: Number(extraPrice) || 0,
-                        variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
+                        variant: initialVariant,
                         options: [],
                         addonPrice: 0,
                         note: ''
@@ -519,7 +536,7 @@
                         menuKey: menuKey,
                         name: name,
                         extraPrice: Number(extraPrice) || 0,
-                        variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
+                        variant: initialVariant,
                         options: [],
                         addonPrice: 0,
                         note: ''

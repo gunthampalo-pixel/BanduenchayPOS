@@ -998,26 +998,70 @@
                 if (!container) return;
                 const menuKey = itemData ? itemData.menuKey : '';
                 const extraPrice = itemData ? itemData.extraPrice : 0;
+                const selectedVariantName = itemData ? itemData.variant : '';
                 
                 const optionsHtml = allMenu
                     .filter(m => !m.IsCombo && m._key !== this.editingMenuKey)
                     .map(m => `<option value="${m._key}" ${m._key === menuKey ? 'selected' : ''}>${m.Name} (฿${m.Price || (m.Variants && m.Variants[0] ? m.Variants[0].price : 0)})</option>`)
                     .join('');
-                    
+                
+                let variantsHtml = `<option value="">-- ทุกรูปแบบ (เลือกหน้าร้าน) --</option>`;
+                if (menuKey) {
+                    const refMenu = allMenu.find(m => m._key === menuKey);
+                    if (refMenu && refMenu.Variants && refMenu.Variants.length > 1) {
+                        refMenu.Variants.forEach(v => {
+                            variantsHtml += `<option value="${v.name}" ${v.name === selectedVariantName ? 'selected' : ''}>รูปแบบ: ${v.name} (฿${v.price})</option>`;
+                        });
+                    }
+                }
+                
                 const itemRowHtml = `
-                <div class="combo-item-row flex gap-2 items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
-                    <select class="combo-item-key flex-1 p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500">
-                        <option value="">-- เลือกเมนู --</option>
-                        ${optionsHtml}
-                    </select>
-                    <div class="relative w-24">
-                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">บวก</span>
-                        <input type="number" class="combo-item-extra w-full pl-8 pr-2 p-2 rounded-lg border border-slate-300 text-xs outline-none text-right focus:border-blue-500" value="${extraPrice}" placeholder="0">
+                <div class="combo-item-row flex flex-col sm:flex-row gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative" style="width: 100%;">
+                    <div class="flex-1 flex flex-col sm:flex-row gap-2">
+                        <select onchange="appAdmin.onComboItemMenuChange(this)" class="combo-item-key flex-1 p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500">
+                            <option value="">-- เลือกเมนู --</option>
+                            ${optionsHtml}
+                        </select>
+                        <select class="combo-item-variant p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500 max-w-[200px] ${(!menuKey || !variantsHtml.includes('รูปแบบ:')) ? 'hidden' : ''}">
+                            ${variantsHtml}
+                        </select>
                     </div>
-                    <button type="button" onclick="this.closest('.combo-item-row').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs p-1">✕</button>
+                    <div class="flex gap-2 items-center">
+                        <div class="relative w-24">
+                            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">บวก</span>
+                            <input type="number" class="combo-item-extra w-full pl-8 pr-2 p-2 rounded-lg border border-slate-300 text-xs outline-none text-right focus:border-blue-500" value="${extraPrice}" placeholder="0">
+                        </div>
+                        <button type="button" onclick="this.closest('.combo-item-row').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs p-1">✕</button>
+                    </div>
                 </div>
                 `;
                 container.insertAdjacentHTML('beforeend', itemRowHtml);
+            },
+            onComboItemMenuChange: function(selectEl) {
+                const row = selectEl.closest('.combo-item-row');
+                if (!row) return;
+                const menuKey = selectEl.value;
+                const variantSel = row.querySelector('.combo-item-variant');
+                if (!variantSel) return;
+                
+                if (!menuKey) {
+                    variantSel.innerHTML = `<option value="">-- ทุกรูปแบบ (เลือกหน้าร้าน) --</option>`;
+                    variantSel.classList.add('hidden');
+                    return;
+                }
+                
+                const refMenu = allMenu.find(m => m._key === menuKey);
+                if (refMenu && refMenu.Variants && refMenu.Variants.length > 1) {
+                    let html = `<option value="">-- ทุกรูปแบบ (เลือกหน้าร้าน) --</option>`;
+                    refMenu.Variants.forEach(v => {
+                        html += `<option value="${v.name}">รูปแบบ: ${v.name} (฿${v.price})</option>`;
+                    });
+                    variantSel.innerHTML = html;
+                    variantSel.classList.remove('hidden');
+                } else {
+                    variantSel.innerHTML = `<option value="">-- ทุกรูปแบบ (เลือกหน้าร้าน) --</option>`;
+                    variantSel.classList.add('hidden');
+                }
             },
             onMainCategoryChange: function() {
                 const mainSel = document.getElementById('adminMenuMainCategory');
@@ -1201,6 +1245,7 @@
                         for (let itemRow of itemRows) {
                             const menuKey = itemRow.querySelector('.combo-item-key').value;
                             const extraPrice = Number(itemRow.querySelector('.combo-item-extra').value) || 0;
+                            const variant = itemRow.querySelector('.combo-item-variant')?.value || '';
                             
                             if (!menuKey) {
                                 return alert('⚠️ กรุณาเลือกรายการเมนูอาหารในทุกช่อง หรือลบช่องว่างออก');
@@ -1212,7 +1257,8 @@
                             items.push({
                                 menuKey: menuKey,
                                 name: itemName,
-                                extraPrice: extraPrice
+                                extraPrice: extraPrice,
+                                variant: variant
                             });
                         }
 

@@ -63,7 +63,34 @@
 
         function changeQty(index, delta) { cart[index].qty += delta; if(cart[index].qty <= 0) cart.splice(index, 1); else cart[index].totalPrice = cart[index].qty * cart[index].price; updateCartUI(); if(cart.length === 0) closeCart(); else openCart(); }
         function closeCart() { document.getElementById('cartModal').classList.add('hidden'); }
-        async function submitOrderToKitchen() { let tableNo = document.getElementById('tableNo').value.trim(); const orderType = document.getElementById('orderType').value; if(!tableNo) { if(orderType === 'Dine-in' || orderType === 'Booking') { closeCart(); return alert('⚠️ กรุณาระบุเลขโต๊ะ หรือ ชื่อลูกค้าก่อนส่งออเดอร์ครับ!'); } else { tableNo = orderType === 'Delivery' ? "ลูกค้ารอเดลิเวอรี่" : "ลูกค้ารอกลับบ้าน"; document.getElementById('tableNo').value = tableNo; } } const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerHTML = "⏳ กำลังส่งเข้าครัว..."; const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0); const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser.Name, timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; try { await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); logActivity('NEW_ORDER', `ส่งออเดอร์ใหม่ โต๊ะ: ${tableNo} ยอด: ฿${totalAmount.toLocaleString()}`); cart = []; document.getElementById('tableNo').value = ""; updateCartUI(); closeCart(); fetchActiveOrders(); } catch (e) { alert("❌ เกิดข้อผิดพลาดในการส่งเข้าครัว"); } finally { btn.disabled = false; btn.innerHTML = "<i class='fa-solid fa-paper-plane mr-2'></i> ส่งออเดอร์"; } }
+        async function submitOrderToKitchen() { 
+            let tableNo = document.getElementById('tableNo').value.trim(); 
+            const orderType = document.getElementById('orderType').value; 
+            if(!tableNo) { 
+                openTablePromptModal(); 
+                return; 
+            } 
+            const btn = document.getElementById('submitBtn'); 
+            btn.disabled = true; 
+            btn.innerHTML = "⏳ กำลังส่งเข้าครัว..."; 
+            const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0); 
+            const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser.Name, timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; 
+            try { 
+                await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); 
+                alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); 
+                logActivity('NEW_ORDER', `ส่งออเดอร์ใหม่ โต๊ะ: ${tableNo} ยอด: ฿${totalAmount.toLocaleString()}`); 
+                cart = []; 
+                document.getElementById('tableNo').value = ""; 
+                updateCartUI(); 
+                closeCart(); 
+                fetchActiveOrders(); 
+            } catch (e) { 
+                alert("❌ เกิดข้อผิดพลาดในการส่งเข้าครัว"); 
+            } finally { 
+                btn.disabled = false; 
+                btn.innerHTML = "<i class='fa-solid fa-paper-plane mr-2'></i> ส่งออเดอร์"; 
+            } 
+        }
 
         async function fetchActiveOrders() { try { const res = await fetch(`${FIREBASE_URL}ActiveOrders.json`); const data = await res.json() || {}; activeOrders = {}; for(let key in data) { if(data[key] && !['paid', 'canceled_cleared'].includes(data[key].status)) { activeOrders[key] = data[key]; } } renderKitchen(); renderStatus(); renderCashier(); } catch (e) {} }
         function renderKitchen() { const container = document.getElementById('kitchen-container'); let html = ""; let count = 0; 
@@ -352,3 +379,108 @@
                 container.innerHTML = html;
             }
         }
+
+        // ==========================================
+        // 🌟 SELECT DESTINATION / TABLE MODAL FOR BLANK ORDERS 🌟
+        // ==========================================
+        let promptSelectedType = 'Dine-in';
+        let promptSelectedTable = '';
+
+        window.openTablePromptModal = function() {
+            promptSelectedType = 'Dine-in';
+            promptSelectedTable = '';
+            document.getElementById('promptManualTable').value = '';
+            
+            // Highlight Dine-in by default
+            selectPromptOrderType('Dine-in');
+            
+            // Render table grid
+            const grid = document.getElementById('promptTableGrid');
+            if (grid) {
+                grid.innerHTML = allTables.map(tbl => {
+                    let isOccupied = false;
+                    for (let key in activeOrders) {
+                        const order = activeOrders[key];
+                        if (order.tableNo === tbl && !['paid', 'canceled', 'canceled_cleared'].includes(order.status)) {
+                            isOccupied = true;
+                            break;
+                        }
+                    }
+                    const occClass = isOccupied ? 'bg-red-50 border-red-200 text-red-700 font-bold' : 'bg-slate-50 border-slate-200 text-slate-700';
+                    return `
+                    <button type="button" onclick="selectPromptTable('${tbl}', this)" class="prompt-table-btn p-2 border rounded-xl text-center font-bold text-xs active:scale-95 transition-all ${occClass}" data-table="${tbl}">
+                        ${tbl}
+                    </button>
+                    `;
+                }).join('');
+            }
+            
+            document.getElementById('tablePromptModal').classList.remove('hidden');
+        };
+
+        window.selectPromptOrderType = function(type) {
+            promptSelectedType = type;
+            
+            const buttons = {
+                'Dine-in': document.getElementById('btnPromptDineIn'),
+                'Takeaway': document.getElementById('btnPromptTakeaway'),
+                'Delivery': document.getElementById('btnPromptDelivery')
+            };
+            
+            for (let key in buttons) {
+                const btn = buttons[key];
+                if (btn) {
+                    if (key === type) {
+                        btn.className = "p-3 border rounded-2xl flex flex-col items-center justify-center gap-1.5 font-bold text-xs bg-teal-50 border-teal-500 text-teal-700 ring-2 ring-teal-500 active:scale-95 transition-all";
+                    } else {
+                        btn.className = "p-3 border rounded-2xl flex flex-col items-center justify-center gap-1.5 font-bold text-xs bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 active:scale-95 transition-all";
+                    }
+                }
+            }
+            
+            const tableSec = document.getElementById('promptTableSection');
+            if (tableSec) {
+                if (type === 'Dine-in') {
+                    tableSec.classList.remove('hidden');
+                } else {
+                    tableSec.classList.add('hidden');
+                }
+            }
+        };
+
+        window.selectPromptTable = function(tableNo, btnElement) {
+            promptSelectedTable = tableNo;
+            document.getElementById('promptManualTable').value = tableNo;
+            
+            document.querySelectorAll('.prompt-table-btn').forEach(btn => {
+                const tbl = btn.getAttribute('data-table');
+                let isOccupied = btn.classList.contains('text-red-700');
+                if (tbl === tableNo) {
+                    btn.className = `prompt-table-btn p-2 border-2 rounded-xl text-center font-bold text-xs active:scale-95 transition-all border-teal-500 bg-teal-50 text-teal-700`;
+                } else {
+                    const occClass = isOccupied ? 'bg-red-50 border-red-200 text-red-700' : 'bg-slate-50 border-slate-200 text-slate-700';
+                    btn.className = `prompt-table-btn p-2 border rounded-xl text-center font-bold text-xs active:scale-95 transition-all ${occClass}`;
+                }
+            });
+        };
+
+        window.confirmPromptAndSubmit = function() {
+            let finalTable = "";
+            if (promptSelectedType === 'Dine-in') {
+                const manualVal = document.getElementById('promptManualTable').value.trim();
+                finalTable = manualVal || promptSelectedTable;
+                if (!finalTable) {
+                    return alert("⚠️ กรุณาเลือกโต๊ะ หรือระบุเลขโต๊ะก่อนครับ");
+                }
+            } else if (promptSelectedType === 'Takeaway') {
+                finalTable = "กลับบ้าน";
+            } else if (promptSelectedType === 'Delivery') {
+                finalTable = "เดลิเวอรี่";
+            }
+            
+            document.getElementById('tableNo').value = finalTable;
+            document.getElementById('orderType').value = promptSelectedType;
+            
+            document.getElementById('tablePromptModal').classList.add('hidden');
+            submitOrderToKitchen();
+        };
