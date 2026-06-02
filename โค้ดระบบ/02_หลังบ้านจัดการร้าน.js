@@ -919,6 +919,16 @@
                 const title = stepData ? stepData.title : '';
                 const required = stepData ? (stepData.required !== false) : true;
                 
+                let type = 'pick_one';
+                if (stepData) {
+                    if (stepData.type) {
+                        type = stepData.type;
+                    } else if (stepData.items) {
+                        type = stepData.items.length === 1 ? 'fixed_all' : 'pick_one';
+                    }
+                }
+                const limit = (stepData && stepData.limit) ? stepData.limit : '';
+                
                 const html = `
                 <div class="combo-step-row bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm relative space-y-3" data-step-id="${stepId}">
                     <button type="button" onclick="this.closest('.combo-step-row').remove()" class="absolute top-3 right-3 text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 w-6 h-6 rounded-full flex items-center justify-center">✕</button>
@@ -931,6 +941,21 @@
                         <div class="flex items-center gap-1 mt-5">
                             <input type="checkbox" class="combo-step-required w-4 h-4 text-blue-600 rounded cursor-pointer" ${required ? 'checked' : ''}>
                             <span class="text-xs text-slate-600 font-bold">บังคับเลือก</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">รูปแบบการเลือก</label>
+                            <select class="combo-step-type w-full p-2.5 rounded-xl border border-slate-300 bg-white outline-none text-xs focus:ring-1 focus:ring-blue-500" onchange="appAdmin.onStepTypeChange('${stepId}')">
+                                <option value="fixed_all" ${type === 'fixed_all' ? 'selected' : ''}>ได้ทุกรายการ (บังคับทั้งหมด)</option>
+                                <option value="pick_one" ${type === 'pick_one' ? 'selected' : ''}>เลือก 1 รายการ (Radio)</option>
+                                <option value="pick_many" ${type === 'pick_many' ? 'selected' : ''}>เลือกได้หลายรายการ (Checkbox)</option>
+                            </select>
+                        </div>
+                        <div class="combo-step-limit-container ${type === 'pick_many' ? '' : 'hidden'}" id="stepLimitContainer_${stepId}">
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">จำนวนรายการสูงสุด (ถ้าจำกัด)</label>
+                            <input type="number" class="combo-step-limit w-full p-2.5 rounded-xl border border-slate-300 bg-white outline-none text-xs focus:ring-1 focus:ring-blue-500" value="${limit}" min="1" placeholder="ไม่จำกัด">
                         </div>
                     </div>
 
@@ -953,6 +978,19 @@
                     });
                 } else {
                     this.addComboStepItemRow(stepId);
+                }
+            },
+            onStepTypeChange: function(stepId) {
+                const row = document.querySelector(`.combo-step-row[data-step-id="${stepId}"]`);
+                if (!row) return;
+                const type = row.querySelector('.combo-step-type').value;
+                const limitContainer = document.getElementById(`stepLimitContainer_${stepId}`);
+                if (limitContainer) {
+                    if (type === 'pick_many') {
+                        limitContainer.classList.remove('hidden');
+                    } else {
+                        limitContainer.classList.add('hidden');
+                    }
                 }
             },
             addComboStepItemRow: function(stepId, itemData = null) {
@@ -1149,6 +1187,10 @@
                         const title = row.querySelector('.combo-step-title').value.trim();
                         const required = row.querySelector('.combo-step-required').checked;
                         
+                        const type = row.querySelector('.combo-step-type').value;
+                        const limitVal = row.querySelector('.combo-step-limit').value;
+                        const limit = (type === 'pick_many' && limitVal) ? Number(limitVal) : null;
+                        
                         if (!title) {
                             return alert('⚠️ กรุณากรอกชื่อขั้นตอนให้ครบถ้วน');
                         }
@@ -1182,6 +1224,8 @@
                             id: stepId,
                             title: title,
                             required: required,
+                            type: type,
+                            limit: limit,
                             items: items
                         });
                     }

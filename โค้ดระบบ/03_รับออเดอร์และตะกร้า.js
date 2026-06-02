@@ -276,22 +276,25 @@
             
             // Pre-initialize steps
             item.ComboSteps.forEach((step, idx) => {
-                if (step.items.length === 1) {
-                    const fixedItem = step.items[0];
-                    const refMenu = allMenu.find(m => m._key === fixedItem.menuKey);
-                    const name = refMenu ? refMenu.Name : fixedItem.name;
-                    comboSelectedStepsData[idx] = {
-                        stepId: step.id,
-                        menuKey: fixedItem.menuKey,
-                        name: name,
-                        extraPrice: Number(fixedItem.extraPrice) || 0,
-                        variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
-                        options: [],
-                        addonPrice: 0,
-                        note: ''
-                    };
+                const stepType = step.type || (step.items.length === 1 ? 'fixed_all' : 'pick_one');
+                
+                if (stepType === 'fixed_all') {
+                    comboSelectedStepsData[idx] = step.items.map(fixedItem => {
+                        const refMenu = allMenu.find(m => m._key === fixedItem.menuKey);
+                        const name = refMenu ? refMenu.Name : fixedItem.name;
+                        return {
+                            stepId: step.id,
+                            menuKey: fixedItem.menuKey,
+                            name: name,
+                            extraPrice: Number(fixedItem.extraPrice) || 0,
+                            variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
+                            options: [],
+                            addonPrice: 0,
+                            note: ''
+                        };
+                    });
                 } else {
-                    comboSelectedStepsData[idx] = null;
+                    comboSelectedStepsData[idx] = [];
                 }
             });
 
@@ -314,10 +317,21 @@
             
             const step = currentComboItem.ComboSteps[comboCurrentStepIndex];
             const totalSteps = currentComboItem.ComboSteps.length;
+            const stepType = step.type || (step.items.length === 1 ? 'fixed_all' : 'pick_one');
             
             document.getElementById('comboStepIndicator').innerText = `ขั้นตอนที่ ${comboCurrentStepIndex + 1} / ${totalSteps}`;
             document.getElementById('comboProgressBar').style.width = `${((comboCurrentStepIndex + 1) / totalSteps) * 100}%`;
-            document.getElementById('comboStepTitle').innerText = step.title + (step.required ? " * (จำเป็น)" : "");
+            
+            let typeDesc = "";
+            if (stepType === 'fixed_all') {
+                typeDesc = " (บังคับเลือกทั้งหมด)";
+            } else if (stepType === 'pick_one') {
+                typeDesc = " (เลือก 1 อย่าง)";
+            } else if (stepType === 'pick_many') {
+                const limitText = step.limit ? `ไม่เกิน ${step.limit} อย่าง` : "หลายอย่าง";
+                typeDesc = ` (เลือกได้${limitText})`;
+            }
+            document.getElementById('comboStepTitle').innerText = step.title + typeDesc + (step.required ? " * (จำเป็น)" : "");
 
             const backBtn = document.getElementById('comboBackStepBtn');
             if (comboCurrentStepIndex > 0) {
@@ -333,14 +347,14 @@
                 nextBtn.innerText = "ขั้นตอนถัดไป";
             }
 
-            const currentSelection = comboSelectedStepsData[comboCurrentStepIndex];
-            const isFixedStep = step.items.length === 1;
+            const currentSelection = comboSelectedStepsData[comboCurrentStepIndex] || [];
 
             step.items.forEach(stepItem => {
                 const refMenu = allMenu.find(m => m._key === stepItem.menuKey);
                 if (!refMenu) return;
 
-                const isSelected = currentSelection && currentSelection.menuKey === stepItem.menuKey;
+                const isSelected = currentSelection.some(sel => sel.menuKey === stepItem.menuKey);
+                const itemSelectionDetails = currentSelection.find(sel => sel.menuKey === stepItem.menuKey);
                 const extraText = stepItem.extraPrice > 0 ? ` (+฿${stepItem.extraPrice})` : '';
                 
                 let cardClass = "p-4 rounded-2xl border transition-all cursor-pointer shadow-sm relative ";
@@ -350,8 +364,13 @@
                     cardClass += "border-slate-200 bg-white hover:border-blue-300";
                 }
 
+                let clickAction = "";
+                if (stepType !== 'fixed_all') {
+                    clickAction = `onclick="selectComboStepItem('${stepItem.menuKey}', ${stepItem.extraPrice}, '${refMenu.Name.replace(/'/g, "\\'")}')"`;
+                }
+
                 let itemHtml = `
-                <div class="${cardClass}" onclick="if(!${isSelected}) selectComboStepItem('${stepItem.menuKey}', ${stepItem.extraPrice}, '${refMenu.Name}')">
+                <div class="${cardClass}" ${clickAction}>
                     <div class="flex justify-between items-start">
                         <div class="flex gap-3">
                             <div class="w-10 h-10 bg-slate-100 rounded-lg overflow-hidden shrink-0">
@@ -365,7 +384,7 @@
                         <div>
                 `;
 
-                if (isFixedStep) {
+                if (stepType === 'fixed_all') {
                     itemHtml += `<span class="text-[9px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-bold shadow-sm"><i class="fa-solid fa-lock mr-1"></i> บังคับในเซ็ต</span>`;
                 } else if (isSelected) {
                     itemHtml += `<span class="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold shadow-sm"><i class="fa-solid fa-check mr-1"></i> เลือกแล้ว</span>`;
@@ -376,7 +395,7 @@
                     </div>
                 `;
 
-                if (isSelected) {
+                if (isSelected && itemSelectionDetails) {
                     itemHtml += `<div class="mt-4 pt-3 border-t border-dashed border-slate-200 space-y-3" onclick="event.stopPropagation()">`;
 
                     if (refMenu.Variants && refMenu.Variants.length > 1) {
@@ -386,9 +405,9 @@
                             <div class="grid grid-cols-2 gap-2">
                         `;
                         refMenu.Variants.forEach((v, idx) => {
-                            const varSelected = currentSelection.variant === v.name || (!currentSelection.variant && idx === 0);
-                            if (varSelected && !currentSelection.variant) {
-                                currentSelection.variant = v.name;
+                            const varSelected = itemSelectionDetails.variant === v.name || (!itemSelectionDetails.variant && idx === 0);
+                            if (varSelected && !itemSelectionDetails.variant) {
+                                itemSelectionDetails.variant = v.name;
                             }
                             const vClass = varSelected ? 'border-blue-500 bg-white font-bold text-blue-600' : 'border-slate-200 bg-slate-50 text-slate-600';
                             itemHtml += `
@@ -415,7 +434,7 @@
                                 `;
                                 
                                 if (!isMulti) {
-                                    const noneSelected = !currentSelection.options.some(o => o.optSetId === optId);
+                                    const noneSelected = !itemSelectionDetails.options.some(o => o.optSetId === optId);
                                     const optClass = noneSelected ? 'border-blue-500 bg-white font-bold text-blue-600' : 'border-slate-200 bg-slate-50 text-slate-600';
                                     itemHtml += `
                                     <button type="button" onclick="updateComboSubItemRadioOption('${stepItem.menuKey}', '${optId}', 'NONE', 0)" class="p-2 border text-xs rounded-xl text-center active:scale-95 transition-all truncate ${optClass}">
@@ -425,7 +444,7 @@
                                 }
 
                                 (optSet.items || []).forEach(i => {
-                                    const isOptSelected = currentSelection.options.some(o => o.optSetId === optId && o.name === i.name);
+                                    const isOptSelected = itemSelectionDetails.options.some(o => o.optSetId === optId && o.name === i.name);
                                     const optClass = isOptSelected ? 'border-blue-500 bg-white font-bold text-blue-600' : 'border-slate-200 bg-slate-50 text-slate-600';
                                     const handlerStr = isMulti 
                                         ? `toggleComboSubItemCheckboxOption('${stepItem.menuKey}', '${optId}', '${i.name}', ${i.price})`
@@ -449,7 +468,7 @@
                     itemHtml += `
                     <div>
                         <label class="text-[10px] font-bold text-slate-500 mb-1 block">หมายเหตุคำสั่งพิเศษสำหรับรายการนี้</label>
-                        <input type="text" class="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 text-xs outline-none focus:ring-1 focus:ring-blue-500" value="${currentSelection.note || ''}" oninput="updateComboSubItemNote('${stepItem.menuKey}', this.value)" placeholder="เช่น ไม่ผัก, หวานน้อย, แยกน้ำ...">
+                        <input type="text" class="w-full p-2 border border-slate-200 rounded-xl bg-slate-50 text-xs outline-none focus:ring-1 focus:ring-blue-500" value="${itemSelectionDetails.note || ''}" oninput="updateComboSubItemNote('${stepItem.menuKey}', this.value)" placeholder="เช่น ไม่ผัก, หวานน้อย, แยกน้ำ...">
                     </div>
                     `;
 
@@ -464,23 +483,59 @@
         window.selectComboStepItem = function(menuKey, extraPrice, name) {
             const step = currentComboItem.ComboSteps[comboCurrentStepIndex];
             const refMenu = allMenu.find(m => m._key === menuKey);
-            comboSelectedStepsData[comboCurrentStepIndex] = {
-                stepId: step.id,
-                menuKey: menuKey,
-                name: name,
-                extraPrice: Number(extraPrice) || 0,
-                variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
-                options: [],
-                addonPrice: 0,
-                note: ''
-            };
+            const stepType = step.type || (step.items.length === 1 ? 'fixed_all' : 'pick_one');
+            
+            let selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
+            
+            if (stepType === 'pick_one') {
+                const isSelected = selections.some(sel => sel.menuKey === menuKey);
+                if (isSelected) {
+                    if (!step.required) {
+                        selections = [];
+                    }
+                } else {
+                    selections = [{
+                        stepId: step.id,
+                        menuKey: menuKey,
+                        name: name,
+                        extraPrice: Number(extraPrice) || 0,
+                        variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
+                        options: [],
+                        addonPrice: 0,
+                        note: ''
+                    }];
+                }
+            } else if (stepType === 'pick_many') {
+                const idx = selections.findIndex(sel => sel.menuKey === menuKey);
+                if (idx >= 0) {
+                    selections.splice(idx, 1);
+                } else {
+                    if (step.limit && selections.length >= step.limit) {
+                        alert(`⚠️ ขั้นตอนนี้เลือกได้สูงสุดไม่เกิน ${step.limit} รายการครับ`);
+                        return;
+                    }
+                    selections.push({
+                        stepId: step.id,
+                        menuKey: menuKey,
+                        name: name,
+                        extraPrice: Number(extraPrice) || 0,
+                        variant: (refMenu && refMenu.Variants && refMenu.Variants[0]) ? refMenu.Variants[0].name : '',
+                        options: [],
+                        addonPrice: 0,
+                        note: ''
+                    });
+                }
+            }
+            
+            comboSelectedStepsData[comboCurrentStepIndex] = selections;
             renderComboCurrentStep();
             calculateComboTotalPrice();
         };
 
         window.updateComboSubItemVariant = function(menuKey, variantName) {
-            const sel = comboSelectedStepsData[comboCurrentStepIndex];
-            if (sel && sel.menuKey === menuKey) {
+            const selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
+            const sel = selections.find(o => o.menuKey === menuKey);
+            if (sel) {
                 sel.variant = variantName;
                 calculateComboAddonPrice(sel);
                 renderComboCurrentStep();
@@ -489,8 +544,9 @@
         };
 
         window.updateComboSubItemRadioOption = function(menuKey, optSetId, optionName, optionPrice) {
-            const sel = comboSelectedStepsData[comboCurrentStepIndex];
-            if (sel && sel.menuKey === menuKey) {
+            const selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
+            const sel = selections.find(o => o.menuKey === menuKey);
+            if (sel) {
                 sel.options = sel.options.filter(o => o.optSetId !== optSetId);
                 if (optionName !== 'NONE') {
                     sel.options.push({
@@ -506,8 +562,9 @@
         };
 
         window.toggleComboSubItemCheckboxOption = function(menuKey, optSetId, optionName, optionPrice) {
-            const sel = comboSelectedStepsData[comboCurrentStepIndex];
-            if (sel && sel.menuKey === menuKey) {
+            const selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
+            const sel = selections.find(o => o.menuKey === menuKey);
+            if (sel) {
                 const existsIdx = sel.options.findIndex(o => o.optSetId === optSetId && o.name === optionName);
                 if (existsIdx >= 0) {
                     sel.options.splice(existsIdx, 1);
@@ -525,8 +582,9 @@
         };
 
         window.updateComboSubItemNote = function(menuKey, value) {
-            const sel = comboSelectedStepsData[comboCurrentStepIndex];
-            if (sel && sel.menuKey === menuKey) {
+            const selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
+            const sel = selections.find(o => o.menuKey === menuKey);
+            if (sel) {
                 sel.note = value;
             }
         };
@@ -556,9 +614,11 @@
             let base = Number(currentComboItem.Price) || 0;
             let total = base;
             
-            comboSelectedStepsData.forEach(sel => {
-                if (sel) {
-                    total += (sel.extraPrice || 0) + (sel.addonPrice || 0);
+            comboSelectedStepsData.forEach(selections => {
+                if (selections && Array.isArray(selections)) {
+                    selections.forEach(sel => {
+                        total += (sel.extraPrice || 0) + (sel.addonPrice || 0);
+                    });
                 }
             });
 
@@ -576,8 +636,9 @@
         window.comboNextStep = function() {
             if (!currentComboItem) return;
             const step = currentComboItem.ComboSteps[comboCurrentStepIndex];
+            const selections = comboSelectedStepsData[comboCurrentStepIndex] || [];
             
-            if (step.required && !comboSelectedStepsData[comboCurrentStepIndex]) {
+            if (step.required && selections.length === 0) {
                 return alert(`⚠️ กรุณาเลือกรายการสำหรับขั้นตอน "${step.title}" ก่อนครับ`);
             }
             
@@ -589,19 +650,21 @@
                 const totalPrice = calculateComboTotalPrice();
                 const parts = [];
                 
-                comboSelectedStepsData.forEach(sel => {
-                    if (sel) {
-                        let s = sel.name;
-                        if (sel.variant && sel.variant !== 'ปกติ' && sel.variant !== '') {
-                            s += ` (${sel.variant})`;
-                        }
-                        if (sel.options && sel.options.length > 0) {
-                            s += ` (${sel.options.map(o => o.name).join(', ')})`;
-                        }
-                        if (sel.note) {
-                            s += ` *${sel.note}*`;
-                        }
-                        parts.push(s);
+                comboSelectedStepsData.forEach(selections => {
+                    if (selections && Array.isArray(selections)) {
+                        selections.forEach(sel => {
+                            let s = sel.name;
+                            if (sel.variant && sel.variant !== 'ปกติ' && sel.variant !== '') {
+                                s += ` (${sel.variant})`;
+                            }
+                            if (sel.options && sel.options.length > 0) {
+                                s += ` (${sel.options.map(o => o.name).join(', ')})`;
+                            }
+                            if (sel.note) {
+                                s += ` *${sel.note}*`;
+                            }
+                            parts.push(s);
+                        });
                     }
                 });
                 
