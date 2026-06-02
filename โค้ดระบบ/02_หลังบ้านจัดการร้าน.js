@@ -343,37 +343,36 @@
             exportMenuToExcel: function() {
                 if(allMenu.length === 0) return alert("ไม่มีข้อมูลเมนูในระบบครับ");
                 let csvContent = "\uFEFF";
-                csvContent += "หมวดหมู่,ชื่อเมนู,ราคาเริ่มต้น,รูปแบบ (Variants),เซ็ตท็อปปิ้ง (Option Sets),ลิงก์รูปภาพ\n";
+                csvContent += "ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
                 
                 const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
                 
                 sortedMenu.forEach(item => {
-                    let cat = `"${(item.Category || '-').replace(/"/g, '""')}"`;
-                    let name = `"${(item.Name || '-').replace(/"/g, '""')}"`;
+                    let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
+                    let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
                     let price = item.Price || 0;
                     
-                    let variants = "-";
+                    let variants = "";
                     if(item.Variants && item.Variants.length > 0) {
-                        variants = `"${item.Variants.map(v => `${v.name}:${v.price}บ.`).join(' | ')}"`;
-                    } else if(item.Price) {
-                        variants = `"(ราคาเดียว:${item.Price}บ.)"`;
-                        price = item.Price;
+                        if(item.Variants.length === 1 && item.Variants[0].name === "ปกติ") {
+                            variants = "";
+                        } else {
+                            variants = `"${item.Variants.map(v => `${v.name}:${v.price}`).join(' | ')}"`;
+                        }
                     }
 
-                    let optSets = "-";
+                    let optSets = "";
                     if(item.OptionSets && item.OptionSets.length > 0) {
                         let setNames = item.OptionSets.map(optId => {
                             let f = globalOptions.find(o => o.id === optId);
                             return f ? f.name : optId;
                         });
                         optSets = `"${setNames.join(' | ').replace(/"/g, '""')}"`;
-                    } else if (item.OptionGroup) {
-                        optSets = `"(แบบเก่า: ${item.OptionGroup})"`;
                     }
 
-                    let img = `"${(item.ImageURL || '-').replace(/"/g, '""')}"`;
+                    let img = item.ImageURL && item.ImageURL !== "-" ? `"${item.ImageURL.replace(/"/g, '""')}"` : '""';
 
-                    csvContent += [cat, name, price, variants, optSets, img].join(",") + "\n";
+                    csvContent += [name, cat, price, variants, optSets, img].join(",") + "\n";
                 });
                 
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
