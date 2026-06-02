@@ -900,17 +900,214 @@
                 
                 this.updateBulkButtonState();
             },
-            openAdminMenuFormModal: function(key = null) {
-                this.editingMenuKey = key; const cats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))]; const uniqueCats = [...new Set(cats)]; const sel = document.getElementById('adminMenuCategory'); sel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
-                if(key) {
-                    const item = allMenu.find(m => m._key === key); document.getElementById('adminMenuFormTitle').innerText = "แก้ไขเมนู"; document.getElementById('adminMenuName').value = item.Name; sel.value = item.Category || uniqueCats[0]; document.getElementById('adminMenuImage').value = item.ImageURL || "";
-                    setTimeout(() => this.previewImage(), 100);
-                    if(item.Variants && item.Variants.length > 0) { this.currentVariants = [...item.Variants]; } else { this.currentVariants = [{ id: 1, name: 'ปกติ', price: item.Price || 0 }]; } this.renderVariants();
-                    let selOpts = item.OptionSets || []; this.renderOptionSetsCheckboxes(selOpts);
+            toggleComboForm: function() {
+                const isCombo = document.getElementById('adminMenuIsCombo').checked;
+                if (isCombo) {
+                    document.getElementById('adminMenuBasePriceContainer').classList.remove('hidden');
+                    document.getElementById('adminComboMenuFields').classList.remove('hidden');
+                    document.getElementById('adminNormalMenuFields').classList.add('hidden');
                 } else {
-                    document.getElementById('adminMenuFormTitle').innerText = "เพิ่มเมนูใหม่"; document.getElementById('adminMenuName').value = ""; document.getElementById('adminMenuImage').value = ""; document.getElementById('imagePreviewContainer').classList.add('hidden');
-                    this.currentVariants = [{ id: 1, name: 'ปกติ', price: 0 }]; this.renderVariants(); this.renderOptionSetsCheckboxes([]);
+                    document.getElementById('adminMenuBasePriceContainer').classList.add('hidden');
+                    document.getElementById('adminComboMenuFields').classList.add('hidden');
+                    document.getElementById('adminNormalMenuFields').classList.remove('hidden');
                 }
+            },
+            addComboStepRow: function(stepData = null) {
+                const container = document.getElementById('adminComboStepsContainer');
+                if (!container) return;
+                const stepId = stepData ? stepData.id : Date.now() + Math.floor(Math.random() * 1000);
+                const title = stepData ? stepData.title : '';
+                const required = stepData ? (stepData.required !== false) : true;
+                
+                const html = `
+                <div class="combo-step-row bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm relative space-y-3" data-step-id="${stepId}">
+                    <button type="button" onclick="this.closest('.combo-step-row').remove()" class="absolute top-3 right-3 text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 w-6 h-6 rounded-full flex items-center justify-center">✕</button>
+                    
+                    <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อขั้นตอน (เช่น เลือกเครื่องดื่ม)</label>
+                            <input type="text" class="combo-step-title w-full p-2.5 rounded-xl border border-slate-300 bg-white outline-none text-xs focus:ring-1 focus:ring-blue-500" value="${title}" placeholder="เช่น เลือกเครื่องดื่ม">
+                        </div>
+                        <div class="flex items-center gap-1 mt-5">
+                            <input type="checkbox" class="combo-step-required w-4 h-4 text-blue-600 rounded cursor-pointer" ${required ? 'checked' : ''}>
+                            <span class="text-xs text-slate-600 font-bold">บังคับเลือก</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-bold text-slate-800">รายการอาหารในขั้นตอนนี้</label>
+                            <button type="button" onclick="appAdmin.addComboStepItemRow('${stepId}')" class="text-[10px] text-blue-600 font-bold bg-blue-100/50 px-2 py-0.5 rounded hover:bg-blue-100">+ เพิ่มอาหาร</button>
+                        </div>
+                        <div class="combo-step-items-container space-y-2" id="stepItems_${stepId}">
+                            <!-- items will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+                
+                if (stepData && stepData.items) {
+                    stepData.items.forEach(item => {
+                        this.addComboStepItemRow(stepId, item);
+                    });
+                } else {
+                    this.addComboStepItemRow(stepId);
+                }
+            },
+            addComboStepItemRow: function(stepId, itemData = null) {
+                const container = document.getElementById(`stepItems_${stepId}`);
+                if (!container) return;
+                const menuKey = itemData ? itemData.menuKey : '';
+                const extraPrice = itemData ? itemData.extraPrice : 0;
+                
+                const optionsHtml = allMenu
+                    .filter(m => !m.IsCombo && m._key !== this.editingMenuKey)
+                    .map(m => `<option value="${m._key}" ${m._key === menuKey ? 'selected' : ''}>${m.Name} (฿${m.Price || (m.Variants && m.Variants[0] ? m.Variants[0].price : 0)})</option>`)
+                    .join('');
+                    
+                const itemRowHtml = `
+                <div class="combo-item-row flex gap-2 items-center bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                    <select class="combo-item-key flex-1 p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500">
+                        <option value="">-- เลือกเมนู --</option>
+                        ${optionsHtml}
+                    </select>
+                    <div class="relative w-24">
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">บวก</span>
+                        <input type="number" class="combo-item-extra w-full pl-8 pr-2 p-2 rounded-lg border border-slate-300 text-xs outline-none text-right focus:border-blue-500" value="${extraPrice}" placeholder="0">
+                    </div>
+                    <button type="button" onclick="this.closest('.combo-item-row').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs p-1">✕</button>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', itemRowHtml);
+            },
+            onMainCategoryChange: function() {
+                const mainSel = document.getElementById('adminMenuMainCategory');
+                const subSel = document.getElementById('adminMenuSubCategory');
+                if (!mainSel || !subSel) return;
+                
+                const mainCat = mainSel.value;
+                
+                // Get all subcategories belonging to this main category
+                const subs = allMenu
+                    .filter(m => m.Category && m.Category.startsWith(mainCat + '/'))
+                    .map(m => m.Category.split('/')[1].trim())
+                    .filter(Boolean);
+                const uniqueSubs = ['-- ไม่มี --', ...new Set(subs)];
+                
+                subSel.innerHTML = uniqueSubs.map(s => `<option value="${s === '-- ไม่มี --' ? '' : s}">${s}</option>`).join('');
+            },
+            addNewSubCategory: function() {
+                const newSub = prompt("พิมพ์ชื่อหมวดหมู่ย่อยใหม่:");
+                if(newSub) {
+                    const subSel = document.getElementById('adminMenuSubCategory');
+                    if (subSel) {
+                        // Check if it already exists, if not add it
+                        let found = false;
+                        for (let option of subSel.options) {
+                            if (option.value === newSub) found = true;
+                        }
+                        if (!found) {
+                            subSel.insertAdjacentHTML('beforeend', `<option value="${newSub}">${newSub}</option>`);
+                        }
+                        subSel.value = newSub;
+                    }
+                }
+            },
+            addNewCategory: function() { 
+                const newCat = prompt("พิมพ์ชื่อหมวดหมู่หลักใหม่:"); 
+                if(newCat) { 
+                    const mainSel = document.getElementById('adminMenuMainCategory'); 
+                    if(mainSel) {
+                        mainSel.insertAdjacentHTML('beforeend', `<option value="${newCat}">${newCat}</option>`); 
+                        mainSel.value = newCat; 
+                        this.onMainCategoryChange();
+                    }
+                } 
+            },
+            openAdminMenuFormModal: function(key = null) {
+                this.editingMenuKey = key; 
+                
+                // Get unique main categories (e.g. "Food", "Beverage" from "Food/Main Course")
+                const mainCats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => {
+                    if (!m.Category) return null;
+                    return m.Category.split('/')[0].trim();
+                }).filter(Boolean))];
+                const uniqueMainCats = [...new Set(mainCats)];
+                
+                const mainSel = document.getElementById('adminMenuMainCategory');
+                mainSel.innerHTML = uniqueMainCats.map(c => `<option value="${c}">${c}</option>`).join('');
+                
+                const isComboCb = document.getElementById('adminMenuIsCombo');
+                const basePriceInput = document.getElementById('adminMenuBasePrice');
+                const stepsContainer = document.getElementById('adminComboStepsContainer');
+                stepsContainer.innerHTML = ''; // Clear steps
+
+                if(key) {
+                    const item = allMenu.find(m => m._key === key); 
+                    document.getElementById('adminMenuFormTitle').innerText = "แก้ไขเมนู"; 
+                    document.getElementById('adminMenuName').value = item.Name; 
+                    document.getElementById('adminMenuImage').value = item.ImageURL || "";
+                    setTimeout(() => this.previewImage(), 100);
+                    
+                    const catParts = (item.Category || '').split('/');
+                    const itemMainCat = catParts[0].trim();
+                    const itemSubCat = catParts.length > 1 ? catParts[1].trim() : '';
+
+                    mainSel.value = itemMainCat || uniqueMainCats[0];
+                    this.onMainCategoryChange();
+                    
+                    if (itemSubCat) {
+                        const subSel = document.getElementById('adminMenuSubCategory');
+                        let found = false;
+                        for (let option of subSel.options) {
+                            if (option.value === itemSubCat) found = true;
+                        }
+                        if (!found) {
+                            subSel.insertAdjacentHTML('beforeend', `<option value="${itemSubCat}">${itemSubCat}</option>`);
+                        }
+                        subSel.value = itemSubCat;
+                    }
+                    
+                    if (item.IsCombo) {
+                        isComboCb.checked = true;
+                        basePriceInput.value = item.Price || 0;
+                        if (item.ComboSteps && item.ComboSteps.length > 0) {
+                            item.ComboSteps.forEach(step => {
+                                this.addComboStepRow(step);
+                            });
+                        }
+                    } else {
+                        isComboCb.checked = false;
+                        basePriceInput.value = "";
+                    }
+
+                    if(item.Variants && item.Variants.length > 0) { 
+                        this.currentVariants = [...item.Variants]; 
+                    } else { 
+                        this.currentVariants = [{ id: 1, name: 'ปกติ', price: item.Price || 0 }]; 
+                    } 
+                    this.renderVariants();
+                    
+                    let selOpts = item.OptionSets || []; 
+                    this.renderOptionSetsCheckboxes(selOpts);
+                } else {
+                    document.getElementById('adminMenuFormTitle').innerText = "เพิ่มเมนูใหม่"; 
+                    document.getElementById('adminMenuName').value = ""; 
+                    document.getElementById('adminMenuImage').value = ""; 
+                    document.getElementById('imagePreviewContainer').classList.add('hidden');
+                    
+                    mainSel.value = 'Food';
+                    this.onMainCategoryChange();
+                    
+                    isComboCb.checked = false;
+                    basePriceInput.value = "";
+                    this.currentVariants = [{ id: 1, name: 'ปกติ', price: 0 }]; 
+                    this.renderVariants(); 
+                    this.renderOptionSetsCheckboxes([]);
+                }
+                
+                this.toggleComboForm();
                 document.getElementById('adminMenuFormModal').classList.remove('hidden');
             },
             closeAdminMenuFormModal: function() { document.getElementById('adminMenuFormModal').classList.add('hidden'); },
@@ -920,7 +1117,6 @@
             },
             addVariantRow: function() { this.currentVariants.push({ id: Date.now(), name: '', price: '' }); this.renderVariants(); },
             removeVariant: function(id) { if(this.currentVariants.length <= 1) return alert('ต้องมีอย่างน้อย 1 รูปแบบครับ'); this.currentVariants = this.currentVariants.filter(v => v.id !== id); this.renderVariants(); },
-            addNewCategory: function() { const newCat = prompt("พิมพ์ชื่อหมวดหมู่ใหม่:"); if(newCat) { const sel = document.getElementById('adminMenuCategory'); sel.insertAdjacentHTML('beforeend', `<option value="${newCat}">${newCat}</option>`); sel.value = newCat; } },
             previewImage: function() {
                 const rawUrl = document.getElementById('adminMenuImage').value.trim(); const convertedUrl = this.convertDriveLink(rawUrl); const container = document.getElementById('imagePreviewContainer'); const img = document.getElementById('imagePreview'); const err = document.getElementById('imagePreviewError');
                 if(!convertedUrl) { container.classList.add('hidden'); return; } container.classList.remove('hidden'); img.classList.add('hidden'); err.classList.add('hidden');
@@ -932,19 +1128,123 @@
                 container.innerHTML = globalOptions.map(opt => `<label class="flex items-start gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer bg-white hover:bg-blue-50 transition-colors"><input type="checkbox" value="${opt.id}" ${selectedIds.includes(opt.id)?'checked':''} class="opt-set-cb mt-0.5 w-5 h-5 text-blue-600 rounded cursor-pointer"><div><p class="font-bold text-slate-800 text-sm">${opt.name}</p><p class="text-[10px] text-slate-500 line-clamp-1 mt-0.5">${(opt.items||[]).map(i=>i.name).join(', ')}</p></div></label>`).join('');
             },
             saveAdminMenu: async function() {
-                const name = document.getElementById('adminMenuName').value.trim(); const cat = document.getElementById('adminMenuCategory').value; const rawImgUrl = document.getElementById('adminMenuImage').value.trim();
-                const vars = []; let varErr = false; document.querySelectorAll('#adminVariantsContainer > div').forEach(row => { const n = row.querySelector('.var-name').value.trim(); const p = row.querySelector('.var-price').value; if(!n || p==='') varErr = true; else vars.push({ id: Date.now()+Math.random(), name: n, price: Number(p) }); });
-                const selOpts = Array.from(document.querySelectorAll('.opt-set-cb:checked')).map(cb => cb.value);
-                if(!name) return alert('⚠️ กรุณาใส่ชื่อเมนู'); if(vars.length===0 || varErr) return alert('⚠️ กรุณากรอกรูปแบบและราคาให้ครบถ้วนทุกช่อง');
-                const menuData = { Name: name, Category: cat, ImageURL: rawImgUrl, Price: vars[0].price, Variants: vars, OptionSets: selOpts };
-                const btn = document.getElementById('btnSaveMenu'); const oldText = btn.innerHTML; btn.innerHTML = "⏳ บันทึก..."; btn.disabled = true;
+                const name = document.getElementById('adminMenuName').value.trim(); 
+                const mainCat = document.getElementById('adminMenuMainCategory').value;
+                const subCat = document.getElementById('adminMenuSubCategory').value;
+                const cat = subCat ? `${mainCat}/${subCat}` : mainCat;
+                const rawImgUrl = document.getElementById('adminMenuImage').value.trim();
+                
+                if(!name) return alert('⚠️ กรุณาใส่ชื่อเมนู');
+
+                const isCombo = document.getElementById('adminMenuIsCombo').checked;
+                let menuData = {};
+
+                if (isCombo) {
+                    const basePrice = Number(document.getElementById('adminMenuBasePrice').value) || 0;
+                    const stepRows = document.querySelectorAll('#adminComboStepsContainer > .combo-step-row');
+                    const comboSteps = [];
+
+                    for (let row of stepRows) {
+                        const stepId = Number(row.getAttribute('data-step-id')) || Date.now();
+                        const title = row.querySelector('.combo-step-title').value.trim();
+                        const required = row.querySelector('.combo-step-required').checked;
+                        
+                        if (!title) {
+                            return alert('⚠️ กรุณากรอกชื่อขั้นตอนให้ครบถ้วน');
+                        }
+
+                        const itemRows = row.querySelectorAll('.combo-step-items-container > .combo-item-row');
+                        const items = [];
+                        
+                        for (let itemRow of itemRows) {
+                            const menuKey = itemRow.querySelector('.combo-item-key').value;
+                            const extraPrice = Number(itemRow.querySelector('.combo-item-extra').value) || 0;
+                            
+                            if (!menuKey) {
+                                return alert('⚠️ กรุณาเลือกรายการเมนูอาหารในทุกช่อง หรือลบช่องว่างออก');
+                            }
+
+                            const refMenu = allMenu.find(m => m._key === menuKey);
+                            const itemName = refMenu ? refMenu.Name : 'ไม่ทราบชื่อ';
+
+                            items.push({
+                                menuKey: menuKey,
+                                name: itemName,
+                                extraPrice: extraPrice
+                            });
+                        }
+
+                        if (items.length === 0) {
+                            return alert(`⚠️ ขั้นตอน "${title}" ต้องมีเมนูให้เลือกอย่างน้อย 1 รายการ`);
+                        }
+
+                        comboSteps.push({
+                            id: stepId,
+                            title: title,
+                            required: required,
+                            items: items
+                        });
+                    }
+
+                    if (comboSteps.length === 0) {
+                        return alert('⚠️ กรุณาเพิ่มขั้นตอนสำหรับ Combo Set อย่างน้อย 1 ขั้นตอน');
+                    }
+
+                    menuData = {
+                        Name: name,
+                        Category: cat,
+                        ImageURL: rawImgUrl,
+                        Price: basePrice,
+                        IsCombo: true,
+                        ComboSteps: comboSteps,
+                        Variants: null,
+                        OptionSets: null
+                    };
+                } else {
+                    const vars = []; 
+                    let varErr = false; 
+                    document.querySelectorAll('#adminVariantsContainer > div').forEach(row => { 
+                        const n = row.querySelector('.var-name').value.trim(); 
+                        const p = row.querySelector('.var-price').value; 
+                        if(!n || p==='') varErr = true; 
+                        else vars.push({ id: Date.now()+Math.random(), name: n, price: Number(p) }); 
+                    });
+                    const selOpts = Array.from(document.querySelectorAll('.opt-set-cb:checked')).map(cb => cb.value);
+                    
+                    if(vars.length===0 || varErr) return alert('⚠️ กรุณากรอกรูปแบบและราคาให้ครบถ้วนทุกช่อง');
+                    
+                    menuData = { 
+                        Name: name, 
+                        Category: cat, 
+                        ImageURL: rawImgUrl, 
+                        Price: vars[0].price, 
+                        Variants: vars, 
+                        OptionSets: selOpts,
+                        IsCombo: false,
+                        ComboSteps: null
+                    };
+                }
+
+                const btn = document.getElementById('btnSaveMenu'); 
+                const oldText = btn.innerHTML; 
+                btn.innerHTML = "⏳ บันทึก..."; 
+                btn.disabled = true;
                 try { 
                     if(this.editingMenuKey) await fetch(`${FIREBASE_URL}Menu/${this.editingMenuKey}.json`, { method: 'PATCH', body: JSON.stringify(menuData) }); 
                     else await fetch(`${FIREBASE_URL}Menu.json`, { method: 'POST', body: JSON.stringify(menuData) }); 
                     alert('✅ บันทึกเมนูสำเร็จ!'); 
                     logActivity('SAVE_MENU', `สร้าง/แก้ไขเมนูอาหาร: ${name}`); 
-                    this.closeAdminMenuFormModal(); await fetchInitialData(); this.renderMenuList(); renderCategories(); filterMenu('All'); 
-                } catch (e) { alert('❌ เกิดข้อผิดพลาด'); } finally { btn.innerHTML = oldText; btn.disabled = false; }
+                    this.closeAdminMenuFormModal(); 
+                    await fetchInitialData(); 
+                    this.renderMenuList(); 
+                    renderCategories(); 
+                    filterMenu('All'); 
+                } catch (e) { 
+                    alert('❌ เกิดข้อผิดพลาด: ' + e.message); 
+                } finally { 
+                    btn.innerHTML = oldText; 
+                    btn.disabled = false; 
+                }
             },
             compressAndConvertFileToBase64: function(file, maxWidth, maxHeight, quality, callback) {
                 const reader = new FileReader();

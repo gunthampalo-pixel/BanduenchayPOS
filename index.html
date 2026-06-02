@@ -458,28 +458,64 @@
                         <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อเมนู</label>
                         <input type="text" id="adminMenuName" placeholder="เช่น อเมริกาโน่" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 flex justify-between">
+                                <span>หมวดหมู่หลัก</span>
+                                <button type="button" onclick="appAdmin.addNewCategory()" class="text-blue-600 hover:text-blue-800 text-[10px]">+ เพิ่มใหม่</button>
+                            </label>
+                            <select id="adminMenuMainCategory" onchange="appAdmin.onMainCategoryChange()" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 mb-1 flex justify-between">
+                                <span>หมวดหมู่ย่อย</span>
+                                <button type="button" onclick="appAdmin.addNewSubCategory()" class="text-blue-600 hover:text-blue-800 text-[10px]">+ เพิ่มใหม่</button>
+                            </label>
+                            <select id="adminMenuSubCategory" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🌟 สวิตช์เปิดใช้เมนูเซ็ต Combo Set 🌟 -->
+                <div class="flex items-center gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100 my-2">
+                    <input type="checkbox" id="adminMenuIsCombo" onchange="appAdmin.toggleComboForm()" class="w-5 h-5 text-blue-600 rounded cursor-pointer shrink-0">
+                    <div class="flex-1">
+                        <label for="adminMenuIsCombo" class="text-sm font-bold text-slate-800 cursor-pointer block">เป็นเมนูเซ็ต (Combo Set)</label>
+                        <p class="text-[10px] text-slate-500">มีสเต็ปเลือกอาหารบังคับ หรือเลือกของเสริมซ้อนเข้าไปได้</p>
+                    </div>
+                </div>
+
+                <div id="adminMenuBasePriceContainer" class="hidden">
+                    <label class="text-xs font-bold text-slate-500 mb-1 block">ราคาเริ่มต้นของเซ็ต (บาท)</label>
+                    <input type="number" id="adminMenuBasePrice" placeholder="เช่น 250" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 outline-none text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <hr class="border-dashed border-slate-200">
+                
+                <!-- ฟอร์มสำหรับอาหารปกติ (มีรูปแบบ หรือ ผูกท็อปปิ้ง) -->
+                <div id="adminNormalMenuFields" class="space-y-4">
                     <div>
-                        <label class="text-xs font-bold text-slate-500 mb-1 flex justify-between">
-                            <span>หมวดหมู่ (Category)</span>
-                            <button onclick="appAdmin.addNewCategory()" class="text-blue-600 hover:text-blue-800 text-[10px]">+ เพิ่มหมวดหมู่ใหม่</button>
-                        </label>
-                        <select id="adminMenuCategory" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm cursor-pointer"></select>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-slate-800 block">รูปแบบ / ราคา (Variants) <span class="text-red-500">*</span></label>
+                            <button type="button" onclick="appAdmin.addVariantRow()" class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold">+ เพิ่มรูปแบบ</button>
+                        </div>
+                        <div id="adminVariantsContainer" class="space-y-2"></div>
+                    </div>
+                    
+                    <hr class="border-dashed border-slate-200">
+                    <div>
+                        <label class="text-xs font-bold text-slate-800 block mb-2">ผูกเซ็ตตัวเลือกเสริม (Option Sets)</label>
+                        <div class="grid grid-cols-1 gap-2" id="adminOptionSetsContainer"></div>
                     </div>
                 </div>
-                <hr class="border-dashed border-slate-200">
-                
-                <div>
-                    <div class="flex justify-between items-center mb-2">
-                        <label class="text-xs font-bold text-slate-800 block">รูปแบบ / ราคา (Variants) <span class="text-red-500">*</span></label>
-                        <button onclick="appAdmin.addVariantRow()" class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold">+ เพิ่มรูปแบบ</button>
+
+                <!-- ฟอร์มสำหรับตัวเลือกเซ็ตอาหาร (Combo Set Details) -->
+                <div id="adminComboMenuFields" class="hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <label class="text-xs font-bold text-slate-800 block">ขั้นตอนและตัวเลือกอาหารในเซ็ต</label>
+                        <button type="button" onclick="appAdmin.addComboStepRow()" class="bg-blue-50 text-blue-600 px-2.5 py-1 rounded text-[10px] font-bold">+ เพิ่มขั้นตอน</button>
                     </div>
-                    <div id="adminVariantsContainer" class="space-y-2"></div>
-                </div>
-                
-                <hr class="border-dashed border-slate-200">
-                <div>
-                    <label class="text-xs font-bold text-slate-800 block mb-2">ผูกเซ็ตตัวเลือกเสริม (Option Sets)</label>
-                    <div class="grid grid-cols-1 gap-2" id="adminOptionSetsContainer"></div>
+                    <div id="adminComboStepsContainer" class="space-y-3"></div>
                 </div>
                 <hr class="border-dashed border-slate-200">
                 
@@ -798,6 +834,45 @@
     <div id="tableActionModal" class="hidden fixed inset-0 bg-black/60 z-[70] flex items-end"><div class="bg-white w-full rounded-t-[32px] p-6 pb-10 shadow-2xl transform transition-transform"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold text-blue-600" id="actionTableTitle">โต๊ะ ...</h2><button onclick="document.getElementById('tableActionModal').classList.add('hidden')" class="text-gray-400 bg-gray-100 rounded-full w-8 h-8 font-bold">✕</button></div><div id="tableActionButtons" class="space-y-3"></div></div></div>
     <div id="qrModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"><div class="bg-white w-full max-w-md rounded-3xl p-6 text-center relative shadow-2xl max-h-[92vh] overflow-y-auto"><button onclick="document.getElementById('qrModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full w-8 h-8 font-bold">✕</button><h2 class="text-xl font-bold text-gray-800 mb-1">ชำระเงิน โต๊ะ <span id="qrTableNo" class="text-blue-600">A1</span></h2><div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 my-4 text-left space-y-2"><div class="flex justify-between text-sm text-slate-500"><span>ยอดก่อนส่วนลด</span><b id="checkoutSubtotal" class="text-slate-800">฿0</b></div><div id="checkoutDiscountLine" class="hidden flex justify-between text-sm text-red-500"><span>ส่วนลด</span><b id="checkoutDiscountAmount">-฿0</b></div><div class="flex justify-between border-t border-dashed border-slate-200 pt-2"><span class="font-bold text-slate-700">ยอดสุทธิที่ต้องชำระ</span><b class="text-3xl font-bold text-green-600" id="qrTotalAmount">฿0</b></div></div><div id="discountBox" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-left"><div class="flex justify-between items-center mb-2"><p class="text-sm font-bold text-amber-900"><i class="fa-solid fa-tags mr-1"></i> ส่วนลดท้ายบิล</p><span id="discountPermissionBadge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">ตรวจสิทธิ์...</span></div><div class="grid grid-cols-[1fr_1.3fr] gap-2"><select id="discountType" onchange="calculateDiscountPreview()" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"><option value="amount">ลดเป็นบาท</option><option value="percent">ลดเป็น %</option></select><input id="discountValue" type="number" min="0" value="0" oninput="calculateDiscountPreview()" placeholder="จำนวนส่วนลด" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"></div><input id="discountReason" type="text" placeholder="เหตุผล เช่น ลูกค้าประจำ / เคลม / โปรโมชัน" class="mt-2 w-full p-2 rounded-xl border border-amber-200 bg-white text-sm"><p id="discountHint" class="text-[10px] text-amber-700 mt-2 leading-relaxed">ต้องมีสิทธิ์ “อนุมัติส่วนลดท้ายบิล” จึงจะใส่ส่วนลดได้</p></div><div id="promptPayQrBox" class="bg-blue-50 p-4 rounded-2xl mb-6 inline-block border-2 border-blue-200 shadow-inner"><img id="promptPayQrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP" alt="QR Code" class="w-48 h-48 mx-auto rounded-xl"><p id="promptPayQrLabel" class="text-xs text-blue-500 mt-2 font-bold"><i class="fa-solid fa-qrcode mr-1"></i> สแกนเพื่อจ่าย</p></div><div class="grid grid-cols-2 gap-3"><button onclick="confirmPayment('cash')" class="bg-green-100 text-green-700 py-3 rounded-xl font-bold border border-green-300 active:scale-95"><i class="fa-solid fa-money-bill-wave mr-1"></i> รับเงินสด</button><button onclick="confirmPayment('transfer')" class="bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95"><i class="fa-solid fa-money-check-dollar mr-1"></i> โอนแล้ว</button></div></div></div>
     <div id="optionModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end"><div class="bg-white w-full rounded-t-[32px] p-6 max-h-[90vh] flex flex-col"><div class="flex justify-between items-start mb-4"><div><h2 id="optItemName" class="text-xl font-bold text-gray-800">ชื่อเมนู</h2><p id="optItemPrice" class="text-blue-600 font-bold text-lg">฿0</p></div><button onclick="closeOptionModal()" class="p-2 bg-gray-100 rounded-full text-gray-500 w-8 h-8 flex items-center justify-center font-bold">✕</button></div><div id="optionsContainer" class="flex-1 overflow-y-auto mb-4 pb-4"></div><button onclick="confirmOptionsAndAdd()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95">เพิ่มลงตะกร้า</button></div></div>
+
+    <!-- 🌟 Modal: เลือก Combo Set ทีละขั้นตอน 🌟 -->
+    <div id="comboModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end">
+        <div class="bg-white w-full rounded-t-[32px] p-6 max-h-[95vh] flex flex-col">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h2 id="comboSetName" class="text-xl font-bold text-gray-800">ชื่อเซ็ตอาหาร</h2>
+                    <p id="comboStepIndicator" class="text-xs text-blue-600 font-bold mt-0.5">ขั้นตอนที่ 1 / 1</p>
+                </div>
+                <button onclick="closeComboModal()" class="p-2 bg-gray-100 rounded-full text-gray-500 w-8 h-8 flex items-center justify-center font-bold">✕</button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mb-4 mt-1">
+                <div id="comboProgressBar" class="bg-blue-600 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            
+            <div class="text-sm font-bold text-slate-700 mb-2" id="comboStepTitle">กรุณาเลือกรายการ</div>
+            
+            <div id="comboStepItemsContainer" class="flex-1 overflow-y-auto mb-4 pb-4 space-y-3">
+                <!-- รายการอาหารในแต่ละขั้นตอนจะถูกเรนเดอร์ตรงนี้ -->
+            </div>
+            
+            <div class="border-t pt-3 flex items-center justify-between gap-4">
+                <div class="text-left">
+                    <p class="text-[10px] text-slate-500">ราคารวมของเซ็ต</p>
+                    <p id="comboTotalLabel" class="text-xl font-bold text-blue-600">฿0</p>
+                </div>
+                <div class="flex gap-2 flex-1 max-w-[70%]">
+                    <button id="comboBackStepBtn" onclick="comboPrevStep()" class="bg-slate-100 text-slate-700 px-4 py-3.5 rounded-2xl font-bold text-sm hover:bg-slate-200 active:scale-95 transition-all hidden">
+                        ย้อนกลับ
+                    </button>
+                    <button id="comboNextStepBtn" onclick="comboNextStep()" class="flex-1 bg-blue-600 text-white py-3.5 rounded-2xl font-bold text-sm shadow-md hover:bg-blue-700 active:scale-95 transition-all">
+                        ถัดไป
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="cartModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] flex items-end"><div class="bg-white w-full rounded-t-[32px] p-6 max-h-[85vh] flex flex-col"><div class="flex justify-between items-center mb-6 border-b pb-2"><h2 class="text-xl font-bold">รายการที่เลือก</h2><button onclick="closeCart()" class="p-2 bg-gray-100 rounded-full text-gray-500 w-8 h-8">✕</button></div><div id="cartItems" class="flex-1 overflow-y-auto space-y-3 mb-6"></div><div class="border-t pt-4 space-y-3"><div class="flex justify-between text-lg font-bold"><span>ยอดรวมทั้งสิ้น</span><span id="modalTotal" class="text-blue-600">฿0</span></div><button id="submitBtn" onclick="submitOrderToKitchen()" class="w-full bg-green-500 text-white py-3.5 rounded-2xl font-bold text-lg shadow-lg active:scale-95"><i class="fa-solid fa-paper-plane mr-2"></i> ส่งออเดอร์</button></div></div></div>
 
     <!-- ========================================== -->

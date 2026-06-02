@@ -13,7 +13,39 @@
 
         function addToCart(name, price, note, category) { const existing = cart.find(item => item.name === name && item.note === note); if(existing) { existing.qty++; existing.totalPrice = existing.qty * price; } else { cart.push({ name, price: Number(price), qty: 1, totalPrice: Number(price), note: note, itemStatus: 'pending', category: category }); } updateCartUI(); const cartCountEl = document.getElementById('cartCount'); cartCountEl.classList.add('scale-150'); setTimeout(() => cartCountEl.classList.remove('scale-150'), 200); }
         function updateCartUI() { const count = cart.reduce((sum, item) => sum + item.qty, 0); const total = cart.reduce((sum, item) => sum + item.totalPrice, 0); document.getElementById('cartCount').innerText = count; document.getElementById('totalPrice').innerText = `฿${total.toLocaleString()}`; const modalTotal = document.getElementById('modalTotal'); if(modalTotal) modalTotal.innerText = `฿${total.toLocaleString()}`; }
-        function openCart() { if(cart.length === 0) return alert("ตะกร้าว่างเปล่า ลองจิ้มเมนูอาหารก่อนนะครับ 😋"); const cartItems = document.getElementById('cartItems'); cartItems.innerHTML = cart.map((item, index) => `<div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100"><div class="flex-1 pr-2"><p class="font-bold text-sm text-gray-800 leading-tight">${item.name}</p>${item.note ? `<p class="text-xs text-red-500 font-bold mt-1">📌 ${item.note}</p>` : ''}<p class="text-xs text-blue-500 font-semibold mt-1">฿${item.price.toLocaleString()}</p></div><div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm"><button onclick="changeQty(${index}, -1)" class="text-lg font-bold text-gray-400 w-6 active:scale-90">-</button><span class="font-bold w-4 text-center text-sm">${item.qty}</span><button onclick="changeQty(${index}, 1)" class="text-lg font-bold text-blue-500 w-6 active:scale-90">+</button></div></div>`).join(''); document.getElementById('cartModal').classList.remove('hidden'); }
+        function openCart() { 
+            if(cart.length === 0) return alert("ตะกร้าว่างเปล่า ลองจิ้มเมนูอาหารก่อนนะครับ 😋"); 
+            const cartItems = document.getElementById('cartItems'); 
+            cartItems.innerHTML = cart.map((item, index) => `
+                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <div class="flex-1 pr-2">
+                        <p class="font-bold text-sm text-gray-800 leading-tight">${item.name}</p>
+                        ${item.note ? `<p class="text-xs text-red-500 font-bold mt-1">📌 ${item.note}</p>` : ''}
+                        <button onclick="editCartItemNote(${index})" class="text-[10px] text-blue-600 hover:text-blue-800 mt-1 font-semibold flex items-center gap-1 outline-none">
+                            <i class="fa-solid fa-pen text-[9px]"></i> ${item.note ? 'แก้ไขโน้ต' : '+ เพิ่มโน้ตพิเศษ'}
+                        </button>
+                        <p class="text-xs text-blue-500 font-semibold mt-1">฿${item.price.toLocaleString()}</p>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm">
+                        <button onclick="changeQty(${index}, -1)" class="text-lg font-bold text-gray-400 w-6 active:scale-90">-</button>
+                        <span class="font-bold w-4 text-center text-sm">${item.qty}</span>
+                        <button onclick="changeQty(${index}, 1)" class="text-lg font-bold text-blue-500 w-6 active:scale-90">+</button>
+                    </div>
+                </div>
+            `).join(''); 
+            document.getElementById('cartModal').classList.remove('hidden'); 
+        }
+
+        window.editCartItemNote = function(index) {
+            if(!cart[index]) return;
+            const currentNote = cart[index].note || '';
+            const newNote = prompt(`ระบุคำสั่งพิเศษสำหรับ "${cart[index].name}"\n(เช่น เผ็ดน้อย, ไม่ใส่หอม):`, currentNote);
+            if (newNote !== null) {
+                cart[index].note = newNote.trim();
+                openCart();
+            }
+        };
+
         function changeQty(index, delta) { cart[index].qty += delta; if(cart[index].qty <= 0) cart.splice(index, 1); else cart[index].totalPrice = cart[index].qty * cart[index].price; updateCartUI(); if(cart.length === 0) closeCart(); else openCart(); }
         function closeCart() { document.getElementById('cartModal').classList.add('hidden'); }
         async function submitOrderToKitchen() { let tableNo = document.getElementById('tableNo').value.trim(); const orderType = document.getElementById('orderType').value; if(!tableNo) { if(orderType === 'Dine-in' || orderType === 'Booking') { closeCart(); return alert('⚠️ กรุณาระบุเลขโต๊ะ หรือ ชื่อลูกค้าก่อนส่งออเดอร์ครับ!'); } else { tableNo = orderType === 'Delivery' ? "ลูกค้ารอเดลิเวอรี่" : "ลูกค้ารอกลับบ้าน"; document.getElementById('tableNo').value = tableNo; } } const btn = document.getElementById('submitBtn'); btn.disabled = true; btn.innerHTML = "⏳ กำลังส่งเข้าครัว..."; const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0); const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser.Name, timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; try { await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); logActivity('NEW_ORDER', `ส่งออเดอร์ใหม่ โต๊ะ: ${tableNo} ยอด: ฿${totalAmount.toLocaleString()}`); cart = []; document.getElementById('tableNo').value = ""; updateCartUI(); closeCart(); fetchActiveOrders(); } catch (e) { alert("❌ เกิดข้อผิดพลาดในการส่งเข้าครัว"); } finally { btn.disabled = false; btn.innerHTML = "<i class='fa-solid fa-paper-plane mr-2'></i> ส่งออเดอร์"; } }
@@ -151,6 +183,21 @@
             }
         }
 
+        function formatItemNameForReceipt(name) {
+            const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+            const match = name.match(/^(.*?)\[(.*?)\]$/);
+            if (match) {
+                const baseName = match[1].trim();
+                const subItems = match[2].split(',').map(s => s.trim()).filter(Boolean);
+                let html = `<b>${esc(baseName)}</b>`;
+                subItems.forEach(sub => {
+                    html += `<br><span style="padding-left: 12px; font-size: 11px; color: #555; display: inline-block;">- ${esc(sub)}</span>`;
+                });
+                return html;
+            }
+            return esc(name);
+        }
+
         function printReceipt(order, receiptWindow = null) {
             if(!order) return;
             const escReceipt = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -160,7 +207,7 @@
             const discountAmount = Number(order.discount?.amount || 0);
             const total = Number(order.totalAmount ?? (subtotal - discountAmount));
             const paidDate = new Date(order.paidAt || new Date()).toLocaleString('th-TH');
-            const rows = validItems.map(item => `<tr><td>${escReceipt(item.qty)}x ${escReceipt(item.name)}${item.note ? `<br><small>${escReceipt(item.note)}</small>` : ''}</td><td class="right">฿${Number(item.totalPrice || 0).toLocaleString()}</td></tr>`).join('');
+            const rows = validItems.map(item => `<tr><td>${escReceipt(item.qty)}x ${formatItemNameForReceipt(item.name)}${item.note ? `<br><small>${escReceipt(item.note)}</small>` : ''}</td><td class="right">฿${Number(item.totalPrice || 0).toLocaleString()}</td></tr>`).join('');
             const logoHtml = receiptSetting.logoUrl ? `<img src="${escReceipt(receiptSetting.logoUrl)}" class="logo" alt="logo">` : `<div class="logoText">bd</div>`;
             const addressLines = [
                 receiptSetting.shopName || 'บ้านเดือนฉาย',
