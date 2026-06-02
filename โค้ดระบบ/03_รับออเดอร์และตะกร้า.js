@@ -1,12 +1,32 @@
         // ==========================================
         // 🛍️ ORDER & CART SYSTEM 
         // ==========================================
-        let activeCategory = 'All';
-        function renderCategories() { const categories = ['All', ...new Set(allMenu.map(item => item.Category).filter(Boolean))]; const bar = document.getElementById('category-bar'); bar.innerHTML = categories.map(cat => `<button onclick="filterMenu('${cat}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat === 'All' ? 'active' : ''}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`).join(''); }
+        let activeCategory = 'All'; 
+        let activeSubCategory = 'All';
+
+        function renderCategories() {
+            // ดึงเฉพาะหมวดหมู่หลัก (ส่วนก่อนหน้าเครื่องหมาย /)
+            const categories = ['All', ...new Set(allMenu.map(item => {
+                if (!item.Category) return null;
+                return item.Category.split('/')[0].trim();
+            }).filter(Boolean))];
+            
+            const bar = document.getElementById('category-bar');
+            if (bar) {
+                bar.innerHTML = categories.map(cat => 
+                    `<button onclick="filterMenu('${cat}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat === 'All' ? 'active' : ''}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`
+                ).join('');
+            }
+        }
         
         function filterMenu(cat, btnElement) { 
             activeCategory = cat;
-            if(btnElement) { document.querySelectorAll('.category-pill').forEach(btn => btn.classList.remove('active')); btnElement.classList.add('active'); } 
+            activeSubCategory = 'All'; // รีเซ็ตหมวดหมู่ย่อยใหม่ทุกครั้งที่กดหมวดหมู่หลัก
+            
+            if(btnElement) { 
+                document.querySelectorAll('.category-pill').forEach(btn => btn.classList.remove('active')); 
+                btnElement.classList.add('active'); 
+            } 
             
             // ล้างช่องค้นหาเมื่อคลิกเปลี่ยนหมวดหมู่
             const searchInput = document.getElementById('menuSearchInput');
@@ -16,12 +36,72 @@
                 document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
             }
             
+            // ตรวจสอบและแสดงแถบหมวดหมู่ย่อย
+            renderSubCategories(cat);
+            
             renderMenuItems(cat, '');
+        }
+
+        function renderSubCategories(mainCat) {
+            const subBar = document.getElementById('sub-category-bar');
+            if (!subBar) return;
+            
+            if (mainCat === 'All') {
+                subBar.classList.add('hidden');
+                subBar.innerHTML = '';
+                return;
+            }
+            
+            // ดึงหมวดหมู่ย่อยของหมวดหมู่หลักนี้
+            const subCats = ['All', ...new Set(allMenu.filter(item => {
+                if (!item.Category) return false;
+                const parts = item.Category.split('/');
+                return parts[0].trim() === mainCat && parts.length > 1;
+            }).map(item => item.Category.split('/')[1].trim()))];
+            
+            if (subCats.length > 1) { // มีหมวดหมู่ย่อยนอกจาก 'All'
+                subBar.classList.remove('hidden');
+                subBar.innerHTML = subCats.map(sub => 
+                    `<button onclick="filterSubMenu('${sub}', this)" class="sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap transition-all shadow-sm ${sub === 'All' ? 'border-teal-600 text-teal-600 font-bold bg-teal-50' : 'border-slate-200 text-slate-500'}">${sub === 'All' ? 'ทั้งหมด' : sub}</button>`
+                ).join('');
+            } else {
+                subBar.classList.add('hidden');
+                subBar.innerHTML = '';
+            }
+        }
+
+        window.filterSubMenu = function(subCat, btnElement) {
+            activeSubCategory = subCat;
+            if (btnElement) {
+                document.querySelectorAll('.sub-category-pill').forEach(btn => {
+                    btn.className = "sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap border-slate-200 text-slate-500 transition-all shadow-sm";
+                });
+                btnElement.className = "sub-category-pill px-3 py-1.5 rounded-full border text-[10px] whitespace-nowrap transition-all shadow-sm border-teal-600 text-teal-600 font-bold bg-teal-50";
+            }
+            renderMenuItems(activeCategory, '');
         }
 
         function renderMenuItems(cat, query) {
             const grid = document.getElementById('menu-grid'); 
-            let filtered = cat === 'All' ? allMenu : allMenu.filter(item => item.Category === cat); 
+            let filtered = allMenu;
+            
+            // กรองตามหมวดหมู่หลัก (cat หรือ activeCategory)
+            if (activeCategory !== 'All') {
+                filtered = filtered.filter(item => {
+                    if (!item.Category) return false;
+                    const mainPart = item.Category.split('/')[0].trim();
+                    return mainPart === activeCategory;
+                });
+                
+                // กรองตามหมวดหมู่ย่อย (activeSubCategory)
+                if (activeSubCategory !== 'All') {
+                    filtered = filtered.filter(item => {
+                        if (!item.Category) return false;
+                        const parts = item.Category.split('/');
+                        return parts.length > 1 && parts[1].trim() === activeSubCategory;
+                    });
+                }
+            }
             
             if (query) {
                 const q = query.toLowerCase().trim();
@@ -125,9 +205,24 @@
         }
         
         function handleMenuClick(item) { 
+            // ซ่อนกล่องคำแนะนำการค้นหาเมื่อมีการคลิกเลือกเมนู
+            document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
+            
             let hasComplexData = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup;
             if(hasComplexData) { openOptionModal(item); } else { let p = item.Price || 0; if(item.Variants && item.Variants.length > 0) p = item.Variants[0].price; addToCart(item.Name, p, "", item.Category); }
         }
+
+        // 🌟 ปิดกล่องคำแนะนำการค้นหาเมื่อคลิกนอกพื้นที่ค้นหา
+        document.addEventListener('click', function(e) {
+            const sugBox = document.getElementById('menuSearchSuggestions');
+            const searchInput = document.getElementById('menuSearchInput');
+            const clearBtn = document.getElementById('clearMenuSearchBtn');
+            if (sugBox && !sugBox.classList.contains('hidden')) {
+                if (e.target !== searchInput && !sugBox.contains(e.target) && e.target !== clearBtn && !clearBtn?.contains(e.target)) {
+                    sugBox.classList.add('hidden');
+                }
+            }
+        });
 
         function openOptionModal(item) {
             currentSelectingItem = item; document.getElementById('optItemName').innerText = item.Name;
