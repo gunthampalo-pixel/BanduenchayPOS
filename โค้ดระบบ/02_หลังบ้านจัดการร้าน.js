@@ -930,8 +930,8 @@
                 const limit = (stepData && stepData.limit) ? stepData.limit : '';
                 
                 const html = `
-                <div class="combo-step-row bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm relative space-y-3" data-step-id="${stepId}">
-                    <button type="button" onclick="this.closest('.combo-step-row').remove()" class="absolute top-3 right-3 text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 w-6 h-6 rounded-full flex items-center justify-center">✕</button>
+                <div class="combo-step-row bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm relative space-y-3" data-step-id="${stepId}">
+                    <button type="button" onclick="this.closest('.combo-step-row').remove()" class="absolute top-2.5 right-2.5 text-red-500 hover:text-red-700 font-bold text-sm bg-red-50 w-6 h-6 rounded-full flex items-center justify-center">✕</button>
                     
                     <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
                         <div>
@@ -1016,22 +1016,22 @@
                 }
                 
                 const itemRowHtml = `
-                <div class="combo-item-row flex flex-col sm:flex-row gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm relative" style="width: 100%;">
-                    <div class="flex-1 flex flex-col sm:flex-row gap-2">
-                        <select onchange="appAdmin.onComboItemMenuChange(this)" class="combo-item-key flex-1 p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500">
+                <div class="combo-item-row flex flex-col sm:flex-row gap-2 bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-sm relative w-full">
+                    <div class="flex-1 flex flex-col sm:flex-row gap-2 w-full">
+                        <select onchange="appAdmin.onComboItemMenuChange(this)" class="combo-item-key w-full flex-1 p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500">
                             <option value="">-- เลือกเมนู --</option>
                             ${optionsHtml}
                         </select>
-                        <select class="combo-item-variant p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500 max-w-[200px] ${(!menuKey || !variantsHtml.includes('รูปแบบ:')) ? 'hidden' : ''}">
+                        <select class="combo-item-variant w-full sm:max-w-[180px] p-2 rounded-lg border border-slate-300 text-xs outline-none focus:border-blue-500 ${(!menuKey || !variantsHtml.includes('รูปแบบ:')) ? 'hidden' : ''}">
                             ${variantsHtml}
                         </select>
                     </div>
-                    <div class="flex gap-2 items-center">
-                        <div class="relative w-24">
+                    <div class="flex gap-2 items-center w-full sm:w-auto justify-between sm:justify-start mt-1 sm:mt-0">
+                        <div class="relative flex-1 sm:flex-initial sm:w-24">
                             <span class="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]">บวก</span>
                             <input type="number" class="combo-item-extra w-full pl-8 pr-2 p-2 rounded-lg border border-slate-300 text-xs outline-none text-right focus:border-blue-500" value="${extraPrice}" placeholder="0">
                         </div>
-                        <button type="button" onclick="this.closest('.combo-item-row').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs p-1">✕</button>
+                        <button type="button" onclick="this.closest('.combo-item-row').remove()" class="text-red-400 hover:text-red-600 font-bold text-xs p-2.5 bg-red-50 rounded-lg sm:bg-transparent sm:p-1 active:scale-95 shrink-0">✕ ลบ</button>
                     </div>
                 </div>
                 `;
