@@ -96,20 +96,57 @@
         }
 
         async function fetchActiveOrders() { try { const res = await fetch(`${FIREBASE_URL}ActiveOrders.json`); const data = await res.json() || {}; activeOrders = {}; for(let key in data) { if(data[key] && !['paid', 'canceled_cleared'].includes(data[key].status)) { activeOrders[key] = data[key]; } } renderKitchen(); renderStatus(); renderCashier(); } catch (e) {} }
-        let currentKitchenFilter = localStorage.getItem('currentKitchenFilter') || 'All';
-        window.changeKitchenFilter = function(val) {
-            currentKitchenFilter = val;
-            localStorage.setItem('currentKitchenFilter', val);
+        let currentKitchenFilters = [];
+        try {
+            currentKitchenFilters = JSON.parse(localStorage.getItem('currentKitchenFilters')) || ['All'];
+        } catch(e) {
+            currentKitchenFilters = ['All'];
+        }
+
+        window.toggleKitchenCategory = function(cat) {
+            if (cat === 'All') {
+                currentKitchenFilters = ['All'];
+            } else {
+                currentKitchenFilters = currentKitchenFilters.filter(c => c !== 'All');
+                const idx = currentKitchenFilters.indexOf(cat);
+                if (idx >= 0) {
+                    currentKitchenFilters.splice(idx, 1);
+                } else {
+                    currentKitchenFilters.push(cat);
+                }
+                if (currentKitchenFilters.length === 0) {
+                    currentKitchenFilters = ['All'];
+                }
+            }
+            localStorage.setItem('currentKitchenFilters', JSON.stringify(currentKitchenFilters));
             renderKitchen();
         };
+
+        function renderKitchenCategories() {
+            const bar = document.getElementById('kitchenCategoryBar');
+            if(!bar) return;
+            
+            const categories = ['All', ...new Set(allMenu.map(item => {
+                if (!item.Category) return null;
+                return item.Category.split('/')[0].trim();
+            }).filter(Boolean))];
+            
+            bar.innerHTML = categories.map(cat => {
+                const isActive = currentKitchenFilters.includes(cat);
+                const activeClass = "bg-teal-700 text-white border-teal-700 font-bold shadow-sm";
+                const inactiveClass = "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium";
+                const currentClass = isActive ? activeClass : inactiveClass;
+                
+                return `<button onclick="toggleKitchenCategory('${cat}')" class="px-4 py-1.5 rounded-full border text-xs whitespace-nowrap active:scale-95 transition-all cursor-pointer ${currentClass}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`;
+            }).join('');
+        }
 
         function renderKitchen() { 
             const container = document.getElementById('kitchen-container'); 
             let html = ""; 
             let count = 0; 
             
-            const selectEl = document.getElementById('kitchenFilterSelect');
-            if (selectEl) selectEl.value = currentKitchenFilter;
+            renderKitchenCategories();
             
             let p = currentUser.Permissions || {};
             const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin');
@@ -126,12 +163,10 @@
                 } 
                 if(order.status === 'pending' || order.status === 'cooking') { 
                     let filteredItems = (order.items || []).map((item, idx) => ({ ...item, originalIndex: idx })).filter(item => { 
-                        if (currentKitchenFilter === 'Food') {
-                            return !['Beverage', 'Dessert', 'Desser&Beverage'].includes(item.category);
-                        } else if (currentKitchenFilter === 'Beverage') {
-                            return item.category === 'Beverage' || item.category === 'Desser&Beverage';
-                        } else if (currentKitchenFilter === 'Dessert') {
-                            return item.category === 'Dessert' || item.category === 'Desser&Beverage';
+                        const itemMainCat = item.category ? item.category.split('/')[0].trim() : '';
+                        
+                        if (!currentKitchenFilters.includes('All')) {
+                            return currentKitchenFilters.includes(itemMainCat);
                         }
                         
                         if (isAdmin) return true; 
