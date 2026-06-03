@@ -16,6 +16,10 @@
                 filteredOrders = paidOrdersArray.filter(o => (o.paymentMethod || '').toLowerCase() === filter);
             }
 
+            // ตรวจสอบสิทธิ์สำหรับปุ่มลบยอดขาย/ลบบิล
+            const isOwner = currentUser && ((currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner' || currentUser.Username === 'gun');
+            const canClear = currentUser && (currentUser.Permissions?.admin || currentUser.Permissions?.clear || isOwner);
+
             // สร้าง HTML ของรายการบิลประวัติ
             let billsHtml = filteredOrders.map(order => {
                 const timeStr = new Date(order.paidAt || order.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'});
@@ -23,6 +27,7 @@
                 const subtotal = Number(order.subtotalAmount ?? validItems.reduce((sum, item) => sum + Number(item.totalPrice || 0), 0));
                 const discountAmount = Number(order.discount?.amount || 0);
                 const orderIdSafe = String(order.orderId || '').replace(/'/g, "\\'");
+                const dateKeySafe = String(order._dateKey || '').replace(/'/g, "\\'");
 
                 // แปลประเภทชำระเงินและสร้าง Badge
                 const method = (order.paymentMethod || '').toLowerCase();
@@ -47,6 +52,18 @@
                     tableLabel = (order.orderType === 'Takeaway' ? 'กลับบ้าน' : 'เดลิเวอรี่') + (tableLabel && tableLabel !== 'กลับบ้าน' && tableLabel !== 'เดลิเวอรี่' ? ` (${tableLabel})` : '');
                 }
 
+                // ปุ่มควบคุม: ถ้ามีสิทธิ์ล้างข้อมูลจะแสดงปุ่ม ลบบิล เคียงคู่กับปุ่มออกใบเสร็จ
+                let actionButtonsHtml = '';
+                if (canClear) {
+                    actionButtonsHtml = `
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="printPaidReceipt('${orderIdSafe}')" class="flex-[3] bg-slate-100 text-slate-700 py-2.5 rounded-xl text-[11px] font-bold active:scale-95"><i class="fa-solid fa-receipt mr-1"></i> ใบเสร็จ</button>
+                        <button onclick="deletePaidOrder('${orderIdSafe}', '${dateKeySafe}')" class="flex-1 bg-red-50 text-red-600 border border-red-200 py-2.5 rounded-xl text-[11px] font-bold hover:bg-red-100 active:scale-95"><i class="fa-solid fa-trash-can mr-1"></i> ลบบิล</button>
+                    </div>`;
+                } else {
+                    actionButtonsHtml = `<button onclick="printPaidReceipt('${orderIdSafe}')" class="mt-3 w-full bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold active:scale-95"><i class="fa-solid fa-receipt mr-1"></i> ออกใบเสร็จอีกครั้ง</button>`;
+                }
+
                 return `<div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm mb-3">
                     <div class="flex justify-between items-center border-b border-gray-100 pb-2 mb-2">
                         <div class="flex flex-col gap-0.5">
@@ -63,7 +80,7 @@
                         <span class="text-[10px] text-gray-400">แคชเชียร์: ${order.cashierName || order.staffName || '-'}</span>
                         <span class="font-bold text-gray-800 text-sm">฿${Number(order.totalAmount || 0).toLocaleString()}</span>
                     </div>
-                    <button onclick="printPaidReceipt('${orderIdSafe}')" class="mt-3 w-full bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold active:scale-95"><i class="fa-solid fa-receipt mr-1"></i> ออกใบเสร็จอีกครั้ง</button>
+                    ${actionButtonsHtml}
                 </div>`;
             }).join('');
 
@@ -225,6 +242,7 @@
                         const orderDateKey = getBusinessDateKey(order.timestamp);
                         const isMatch = !isLegacy || dateKeys.includes(orderDateKey);
                         if (isMatch) { 
+                            order._dateKey = orderDateKey; // บันทึก dateKey ของบิลสำหรับใช้อ้างอิงพาธในการลบ
                             const orderAmount = Number(order.totalAmount || 0);
                             totalRevenue += orderAmount; totalOrders++; paidOrdersArray.push(order); 
                             
@@ -343,4 +361,34 @@
             document.body.removeChild(link); 
         };
 
+        // 🗑️ ฟังก์ชันลบบิลขายเดี่ยวรายใบอย่างถาวร (ควบคุมสิทธิ์แอดมิน + ใช้ Owner PIN)
+        window.deletePaidOrder = function(orderId, dateKey) {
+            const isOwner = currentUser && ((currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner' || currentUser.Username === 'gun');
+            const canClear = currentUser && (currentUser.Permissions?.admin || currentUser.Permissions?.clear || isOwner);
+            if (!canClear) {
+                return alert("⚠️ คุณไม่มีสิทธิ์ลบบิลนี้");
+            }
+            
+            const enteredPin = prompt(`🔑 กรุณาใส่ Owner PIN เพื่อยืนยันการลบบิลถาวร\n(บิล #${orderId})`);
+            if (enteredPin === null) return; // กดยกเลิก
+            if (enteredPin !== appSettings.ownerPin) {
+                return alert("❌ รหัส Owner PIN ไม่ถูกต้อง! การดำเนินการถูกยกเลิก");
+            }
+
+            showModal('confirm', 'ลบบิลถาวร', `⚠️ คุณยืนยันที่จะลบบิล #${orderId} หรือไม่?\nยอดขายและข้อมูลในบิลนี้จะถูกลบออกจากระบบอย่างถาวรและไม่สามารถกู้คืนได้`, async () => {
+                try {
+                    // หากมี dateKey (รูปแบบใหม่) ให้ลบตามวันที่ในประวัติ หากไม่มีให้ลบจาก Orders หลัก (รูปแบบเก่า)
+                    const path = dateKey ? `OrderHistory/${dateKey}/${orderId}.json` : `Orders/${orderId}.json`;
+                    const res = await fetch(`${FIREBASE_URL}${path}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error("ลบข้อมูลไม่สำเร็จ");
+                    
+                    alert("🗑️ ลบบิลสำเร็จแล้ว");
+                    logActivity('DELETE_PAID_ORDER', `ลบบิลชำระเงินถาวร: บิล #${orderId} (วันที่: ${dateKey || 'Legacy'})`);
+                    fetchSalesData();
+                } catch (e) {
+                    alert("❌ เกิดข้อผิดพลาดในการลบบิล: " + e.message);
+                }
+            });
+        };
+ 
         fetchInitialData();

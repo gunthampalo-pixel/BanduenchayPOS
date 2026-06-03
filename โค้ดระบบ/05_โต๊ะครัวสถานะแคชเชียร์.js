@@ -179,7 +179,28 @@
                     count++; 
                     const timeStr = new Date(order.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}); 
                     const isAllDoneInMyDept = filteredItems.filter(i => i.itemStatus !== 'canceled').every(i => i.itemStatus === 'done'); 
-                    html += `<div class="bg-white rounded-2xl shadow-md border-l-4 ${isAllDoneInMyDept ? 'border-green-500 opacity-60' : 'border-orange-400'} p-4 flex flex-col"><div class="flex justify-between items-center border-b pb-2 mb-3"><div><span class="font-black text-xl md:text-2xl mr-2 text-slate-800">${order.tableNo}</span><span class="text-xs md:text-sm bg-slate-100 px-2 py-1 rounded text-slate-600 font-bold">${order.orderType}</span></div><span class="text-xs md:text-sm text-slate-500 font-semibold"><i class="fa-regular fa-clock"></i> ${timeStr}</span></div><div class="flex-1 space-y-3 mb-3">${filteredItems.map((item) => { const isDone = item.itemStatus === 'done'; const isCanceled = item.itemStatus === 'canceled'; if (isCanceled) { return `<div class="flex justify-between items-center p-3 rounded-xl border bg-red-50 border-red-200 opacity-80"><div class="flex flex-col"><span class="text-base md:text-lg font-bold text-red-500"><span class="text-red-600 mr-1.5 text-lg md:text-xl font-black">${item.qty}x</span> ${formatItemNameHTML(item.name, true, true)}</span></div><span class="text-xs font-bold text-red-600 px-2 py-1 bg-white rounded shadow-sm">ยกเลิกแล้ว</span></div>`; } return `<div onclick="toggleItemDone('${key}', ${item.originalIndex}, '${item.itemStatus || 'pending'}')" class="flex justify-between items-center p-3.5 rounded-xl border cursor-pointer active:scale-95 transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}"><div class="flex-1 flex flex-col"><span class="text-base md:text-lg font-bold"><span class="text-orange-600 mr-1.5 text-lg md:text-xl font-black">${item.qty}x</span> ${formatItemNameHTML(item.name, isDone, true)}</span>${item.note ? `<span class="text-sm md:text-base font-bold text-red-600 bg-red-50 px-2.5 py-1.5 rounded border border-red-200 mt-2 block shadow-sm"><i class="fa-solid fa-thumbtack mr-1"></i> ${item.note}</span>` : ''}</div><div class="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border-2 shrink-0 ml-3 ${isDone ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-slate-300 text-transparent'}"><i class="fa-solid fa-check text-sm md:text-base"></i></div></div>`; }).join('')}</div></div>`; 
+                    html += `<div class="bg-white rounded-2xl shadow-md border-l-4 ${isAllDoneInMyDept ? 'border-green-500 opacity-60' : 'border-orange-400'} p-4 flex flex-col">
+                        <div class="flex justify-between items-start border-b pb-2 mb-3">
+                            <div>
+                                <div class="flex items-center gap-1.5 mb-1">
+                                    <span class="font-black text-xl md:text-2xl text-slate-800">${order.tableNo}</span>
+                                    <span class="text-[10px] md:text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-bold">${order.orderType}</span>
+                                </div>
+                                <span class="text-[10px] md:text-xs text-slate-400 font-semibold"><i class="fa-regular fa-clock"></i> ${timeStr}</span>
+                            </div>
+                            <button onclick="toggleAllKitchenItems('${key}')" class="text-[10px] md:text-xs font-bold ${isAllDoneInMyDept ? 'bg-slate-100 text-slate-500 border-slate-200' : 'bg-teal-50 border-teal-200 text-teal-700'} border px-2.5 py-1.5 rounded-lg active:scale-95 transition-all"><i class="fa-solid fa-circle-check mr-1"></i> ${isAllDoneInMyDept ? 'ทำใหม่ทั้งหมด' : 'เสร็จทั้งหมด'}</button>
+                        </div>
+                        <div class="flex-1 space-y-3 mb-3">
+                            ${filteredItems.map((item) => { 
+                                const isDone = item.itemStatus === 'done'; 
+                                const isCanceled = item.itemStatus === 'canceled'; 
+                                if (isCanceled) { 
+                                    return `<div class="flex justify-between items-center p-3 rounded-xl border bg-red-50 border-red-200 opacity-80"><div class="flex flex-col"><span class="text-base md:text-lg font-bold text-red-500"><span class="text-red-600 mr-1.5 text-lg md:text-xl font-black">${item.qty}x</span> ${formatItemNameHTML(item.name, true, true)}</span></div><span class="text-xs font-bold text-red-600 px-2 py-1 bg-white rounded shadow-sm">ยกเลิกแล้ว</span></div>`; 
+                                } 
+                                return `<div onclick="toggleItemDone('${key}', ${item.originalIndex}, '${item.itemStatus || 'pending'}')" class="flex justify-between items-center p-3.5 rounded-xl border cursor-pointer active:scale-95 transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}"><div class="flex-1 flex flex-col"><span class="text-base md:text-lg font-bold"><span class="text-orange-600 mr-1.5 text-lg md:text-xl font-black">${item.qty}x</span> ${formatItemNameHTML(item.name, isDone, true)}</span>${item.note ? `<span class="text-sm md:text-base font-bold text-red-600 bg-red-50 px-2.5 py-1.5 rounded border border-red-200 mt-2 block shadow-sm"><i class="fa-solid fa-thumbtack mr-1"></i> ${item.note}</span>` : ''}</div><div class="w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center border-2 shrink-0 ml-3 ${isDone ? 'bg-green-500 border-green-500 text-white' : 'bg-white border-slate-300 text-transparent'}"><i class="fa-solid fa-check text-sm md:text-base"></i></div></div>`; 
+                            }).join('')}
+                        </div>
+                    </div>`; 
                 } 
             } if(count === 0) html = `<div class="text-center py-10 text-gray-400 text-sm col-span-2">ไม่มีออเดอร์ในแผนกของคุณครับ ล้างกระทะรอได้เลย!</div>`; container.innerHTML = html; }
         async function toggleItemDone(orderKey, originalIndex, currentStatus) { const newStatus = currentStatus === 'done' ? 'pending' : 'done'; const order = activeOrders[orderKey]; if(!order.items[originalIndex]) return; order.items[originalIndex].itemStatus = newStatus; const activeItems = order.items.filter(i => i.itemStatus !== 'canceled'); const allDoneGlobal = activeItems.length > 0 && activeItems.every(i => i.itemStatus === 'done'); const anyDoneGlobal = activeItems.some(i => i.itemStatus === 'done'); let newOrderStatus = order.status; if(allDoneGlobal) newOrderStatus = 'done'; else if(anyDoneGlobal) newOrderStatus = 'cooking'; else newOrderStatus = 'pending'; order.status = newOrderStatus; renderKitchen(); try { await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}/items/${originalIndex}.json`, { method: 'PATCH', body: JSON.stringify({ itemStatus: newStatus }) }); await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'PATCH', body: JSON.stringify({ status: newOrderStatus }) }); } catch (e) {} }
@@ -564,4 +585,85 @@
             
             document.getElementById('tablePromptModal').classList.add('hidden');
             submitOrderToKitchen();
+        };
+
+        // 🍳 ฟังก์ชันปรับสถานะรายการอาหารในครัวให้เสร็จทั้งหมด (หรือทำใหม่ทั้งหมด) ในคลิกเดียว
+        window.toggleAllKitchenItems = async function(orderKey) {
+            const order = activeOrders[orderKey];
+            if (!order || !order.items) return;
+
+            // ตรวจสอบตัวกรองและบทบาทเพื่อเลือกเฉพาะเมนูที่แสดงอยู่บนเครื่องครัวนี้
+            let p = currentUser.Permissions || {};
+            const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin');
+            const isBar = (currentUser.Role || "").toLowerCase().includes('bar') || (currentUser.Role || "").toLowerCase().includes('บาร์');
+            const isKitchen = (currentUser.Role || "").toLowerCase().includes('kitchen') || (currentUser.Role || "").toLowerCase().includes('ครัว');
+
+            let visibleIndices = [];
+            let pendingIndices = [];
+            order.items.forEach((item, idx) => {
+                if (item.itemStatus === 'canceled') return;
+
+                const itemMainCat = item.category ? item.category.split('/')[0].trim() : '';
+                let isVisible = false;
+                
+                if (!currentKitchenFilters.includes('All')) {
+                    isVisible = currentKitchenFilters.includes(itemMainCat);
+                } else if (isAdmin) {
+                    isVisible = true;
+                } else {
+                    const isDrinkOrDessert = ['Beverage', 'Dessert', 'Desser&Beverage'].includes(item.category);
+                    if (isBar && !isKitchen) isVisible = isDrinkOrDessert;
+                    else if (isKitchen && !isBar) isVisible = !isDrinkOrDessert;
+                    else isVisible = true;
+                }
+                
+                if (isVisible) {
+                    visibleIndices.push(idx);
+                    if (item.itemStatus !== 'done') {
+                        pendingIndices.push(idx);
+                    }
+                }
+            });
+
+            if (visibleIndices.length === 0) return;
+
+            // หากมีบางตัวยังทำไม่เสร็จ -> ปรับเสร็จทั้งหมด, หากเสร็จทั้งหมดอยู่แล้ว -> ปรับกลับเป็นยังไม่ทำ (Undo)
+            const newStatus = pendingIndices.length > 0 ? 'done' : 'pending';
+            const targetsToUpdate = pendingIndices.length > 0 ? pendingIndices : visibleIndices;
+
+            const promises = [];
+            targetsToUpdate.forEach(idx => {
+                order.items[idx].itemStatus = newStatus;
+                promises.push(
+                    fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}/items/${idx}.json`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ itemStatus: newStatus })
+                    })
+                );
+            });
+
+            // คำนวณสถานะบิลของร้านโดยรวม
+            const activeItems = order.items.filter(i => i.itemStatus !== 'canceled');
+            const allDoneGlobal = activeItems.length > 0 && activeItems.every(i => i.itemStatus === 'done');
+            const anyDoneGlobal = activeItems.some(i => i.itemStatus === 'done');
+            
+            let newOrderStatus = order.status;
+            if (allDoneGlobal) newOrderStatus = 'done';
+            else if (anyDoneGlobal) newOrderStatus = 'cooking';
+            else newOrderStatus = 'pending';
+            
+            order.status = newOrderStatus;
+            promises.push(
+                fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ status: newOrderStatus })
+                })
+            );
+
+            renderKitchen();
+            try {
+                await Promise.all(promises);
+            } catch (e) {
+                console.error("Error toggling all kitchen items:", e);
+            }
         };

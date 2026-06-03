@@ -102,6 +102,25 @@
                 }
                 const chk = document.getElementById('clearAllSalesCheckbox');
                 if (chk) chk.checked = false;
+
+                const rangeEl = document.getElementById('ownerClearRangeSalesContainer');
+                const rangeText = document.getElementById('clearRangeSalesText');
+                const startDateVal = document.getElementById('salesDateStart')?.value;
+                const endDateVal = document.getElementById('salesDateEnd')?.value;
+                if (rangeEl && rangeText) {
+                    if (canClearAll && startDateVal && endDateVal) {
+                        rangeEl.classList.remove('hidden');
+                        const startStr = new Date(startDateVal).toLocaleDateString('th-TH');
+                        const endStr = new Date(endDateVal).toLocaleDateString('th-TH');
+                        const dateRangeDisplay = startStr === endStr ? startStr : `${startStr} ถึง ${endStr}`;
+                        rangeText.innerHTML = `ล้างยอดขายเฉพาะช่วงวันที่เลือก (${dateRangeDisplay})`;
+                    } else {
+                        rangeEl.classList.add('hidden');
+                    }
+                }
+                const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                if (chkRange) chkRange.checked = false;
+
                 this.onClearAllSalesCheckboxChange(chk);
 
                 try {
@@ -143,11 +162,34 @@
                 const hint = document.getElementById('clearDataModalHint');
                 if (hint) {
                     if (el && el.checked) {
+                        const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                        if (chkRange) chkRange.checked = false;
                         hint.innerHTML = "💡 <b>โหมดล้างยอดทั้งหมด:</b> กรุณากรอก <b>Owner PIN</b> เพื่อยืนยันการเคลียร์ฐานข้อมูลบิลและประวัติทั้งหมด";
                         hint.classList.add('text-red-700');
                     } else {
-                        hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
-                        hint.classList.remove('text-red-700');
+                        const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                        if (!chkRange || !chkRange.checked) {
+                            hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
+                            hint.classList.remove('text-red-700');
+                        }
+                    }
+                }
+            },
+
+            onClearRangeSalesCheckboxChange: function(el) {
+                const hint = document.getElementById('clearDataModalHint');
+                if (hint) {
+                    if (el && el.checked) {
+                        const chkAll = document.getElementById('clearAllSalesCheckbox');
+                        if (chkAll) chkAll.checked = false;
+                        hint.innerHTML = "💡 <b>โหมดล้างยอดตามวันที่เลือก:</b> กรุณากรอก <b>Owner PIN</b> เพื่อยืนยันการล้างข้อมูลยอดขายในช่วงวันดังกล่าว";
+                        hint.classList.add('text-red-700');
+                    } else {
+                        const chkAll = document.getElementById('clearAllSalesCheckbox');
+                        if (!chkAll || !chkAll.checked) {
+                            hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
+                            hint.classList.remove('text-red-700');
+                        }
                     }
                 }
             },
@@ -155,6 +197,7 @@
             executeClearData: async function() {
                 const pin = document.getElementById('clearConfirmPin').value;
                 const isClearAll = document.getElementById('clearAllSalesCheckbox')?.checked || false;
+                const isClearRange = document.getElementById('clearRangeSalesCheckbox')?.checked || false;
 
                 if (isClearAll) {
                     // ล้างข้อมูลทั้งหมด (ควบคุมด้วย Owner PIN)
@@ -194,6 +237,71 @@
                         if (typeof fetchSalesData === 'function') fetchSalesData();
                     } catch (e) {
                         alert("❌ เกิดข้อผิดพลาดในการล้างข้อมูลทั้งหมด: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                } else if (isClearRange) {
+                    // ล้างข้อมูลเฉพาะช่วงวันที่เลือก (ควบคุมด้วย Owner PIN)
+                    if (!this.verifyOwnerPin(pin)) {
+                        return alert("❌ Owner PIN ไม่ถูกต้อง! ไม่สามารถล้างยอดขายได้");
+                    }
+
+                    const startDateVal = document.getElementById('salesDateStart')?.value;
+                    const endDateVal = document.getElementById('salesDateEnd')?.value;
+                    if (!startDateVal || !endDateVal) {
+                        return alert("❌ กรุณาเลือกช่วงวันที่ที่ต้องการล้างยอดในตารางรายงานยอดขายก่อนครับ");
+                    }
+
+                    const startStr = new Date(startDateVal).toLocaleDateString('th-TH');
+                    const endStr = new Date(endDateVal).toLocaleDateString('th-TH');
+                    const dateRangeDisplay = startStr === endStr ? startStr : `${startStr} ถึง ${endStr}`;
+
+                    const okToDelete = confirm(`⚠️ ยืนยันการล้างยอดขายช่วงวันที่เลือก ⚠️\n\nประวัติยอดขายและบิลทั้งหมดในช่วงวันที่ ${dateRangeDisplay} จะถูกลบถาวร!\n\nข้อมูลวันอื่นๆ จะไม่ได้รับผลกระทบ\n\nกด OK เพื่อเริ่มดำเนินการ`);
+                    if (!okToDelete) return;
+
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังล้างยอดตามวันที่เลือก...";
+                    btn.disabled = true;
+
+                    try {
+                        let start = new Date(startDateVal);
+                        let end = new Date(endDateVal);
+                        if (start > end) {
+                            const temp = start; start = end; end = temp;
+                        }
+                        let current = new Date(start);
+                        let dateKeys = [];
+                        while (current <= end) {
+                            const year = current.getFullYear();
+                            const month = String(current.getMonth() + 1).padStart(2, '0');
+                            const date = String(current.getDate()).padStart(2, '0');
+                            dateKeys.push(`${year}-${month}-${date}`);
+                            current.setDate(current.getDate() + 1);
+                        }
+
+                        // ส่งคำสั่ง DELETE ใน Firebase สำหรับแต่ละวัน
+                        const deletePromises = dateKeys.map(key => 
+                            fetch(`${FIREBASE_URL}OrderHistory/${key}.json`, { method: 'DELETE' })
+                        );
+                        await Promise.all(deletePromises);
+
+                        // บันทึกกิจกรรมใน Audit Log
+                        await logActivity('WIPE_RANGE_SALES', `ล้างยอดขายและประวัติบิลเฉพาะช่วงวันที่ ${dateRangeDisplay} สำเร็จ`);
+
+                        alert(`✅ ล้างยอดขายช่วงวันที่ ${dateRangeDisplay} เรียบร้อยแล้วครับ!`);
+                        this.closeClearDataModal();
+
+                        // รีเฟรชหน้าร้าน
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch(e) {
+                        alert("❌ เกิดข้อผิดพลาดในการล้างข้อมูลตามวันที่: " + e.message);
                     } finally {
                         btn.innerHTML = oldText;
                         btn.disabled = false;

@@ -17,6 +17,14 @@
             document.getElementById('passwordInput').value = ""; 
             document.getElementById('login-error').innerText = ""; 
             
+            // 🧪 อัปเดตและรันระบบทดสอบหากเป็นบัญชีพนักงานทดลอง/นักพัฒนา
+            if (typeof window.updateTestModeBanner === 'function') {
+                window.updateTestModeBanner();
+            }
+            if (typeof isDemoUserActive === 'function' && isDemoUserActive() && typeof runTestBackgroundCleanup === 'function') {
+                runTestBackgroundCleanup();
+            }
+
             setupPermissions(user); 
             logActivity('LOGIN', `เข้าสู่ระบบสำเร็จ`); 
             
@@ -89,6 +97,20 @@
             else if (navAdmin.style.display === 'flex') switchPage('admin', navAdmin);
         }
 
-        function logout() { logActivity('LOGOUT', `ออกจากระบบ`); currentUser = null; stopPolling(); document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('global-header').classList.add('hidden'); document.getElementById('bottom-nav').classList.add('hidden'); document.getElementById('bottom-nav').classList.remove('flex'); document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden')); }
+        function logout() { 
+            logActivity('LOGOUT', `ออกจากระบบ`); 
+            currentUser = null; 
+            stopPolling(); 
+            document.getElementById('login-screen').classList.remove('hidden'); 
+            document.getElementById('global-header').classList.add('hidden'); 
+            document.getElementById('bottom-nav').classList.add('hidden'); 
+            document.getElementById('bottom-nav').classList.remove('flex'); 
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden')); 
+
+            // 🧪 อัปเดตการแสดงผลแบนเนอร์แจ้งเตือนจำลองข้อมูล (ซ่อนแบนเนอร์สำหรับพนักงานเดโม่ที่ล็อกเอาท์)
+            if (typeof window.updateTestModeBanner === 'function') {
+                window.updateTestModeBanner();
+            }
+        }
         function switchPage(pageId, btnElement) { document.querySelectorAll('.page-content').forEach(page => page.classList.add('hidden')); document.getElementById('page-' + pageId).classList.remove('hidden'); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); if(btnElement) btnElement.classList.add('active'); const cartBar = document.getElementById('cart-bar'); if(pageId === 'order') cartBar.classList.remove('translate-y-32'); else cartBar.classList.add('translate-y-32'); if(['kitchen', 'cashier', 'status', 'order', 'sales', 'admin'].includes(pageId)) { fetchActiveOrders(); if(pageId === 'sales') fetchSalesData(); if(!pollingInterval && pageId !== 'admin') pollingInterval = setInterval(fetchActiveOrders, 3000); } else { stopPolling(); } }
         function stopPolling() { if(pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; } }

@@ -3,6 +3,55 @@
         const CLEANUP_RETENTION_DAYS = 60;
         const CLEANUP_ORDER_STATUSES = ['paid', 'canceled', 'canceled_cleared'];
         
+        // 🧪 ระบบตรวจจับและดักจับเส้นทางข้อมูลสำหรับโหมดทดสอบ (Test/Demo Mode Interceptor)
+        const IS_TEST_MODE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
+        
+        function isDemoUserActive() {
+            if (!currentUser) return false;
+            const username = (currentUser.Username || currentUser.ID || '').toLowerCase().trim();
+            return username === 'demo' || username === 'dev';
+        }
+
+        // ดักจับการเรียกดึงข้อมูลจาก Firebase
+        const originalFetch = window.fetch;
+        window.fetch = function(input, init) {
+            if (typeof input === 'string' && input.startsWith(FIREBASE_URL)) {
+                const path = input.substring(FIREBASE_URL.length);
+                const firstSegment = path.split('/')[0].split('.')[0]; // เช่น "ActiveOrders.json" -> "ActiveOrders"
+                const transactionalPaths = ['ActiveOrders', 'OrderHistory', 'AuditLogs'];
+                if ((IS_TEST_MODE || isDemoUserActive()) && transactionalPaths.includes(firstSegment)) {
+                    input = FIREBASE_URL + 'TestData/' + path;
+                    console.log(`[Sandbox Mode Override] Redirected API call for ${currentUser?.Name || 'System'}: ${input}`);
+                }
+            }
+            return originalFetch(input, init);
+        };
+
+        // ฟังก์ชันอัปเดตการแสดงผลของแบนเนอร์แจ้งเตือนจำลองข้อมูลด้านบนสุด
+        window.updateTestModeBanner = function() {
+            const banner = document.getElementById('test-mode-banner');
+            if (!banner) return;
+            
+            const isDemo = isDemoUserActive();
+            if (IS_TEST_MODE || isDemo) {
+                if (isDemo) {
+                    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5 animate-bounce"></i> โหมดบัญชีทดสอบ (${currentUser.Name}) - ข้อมูลสั่งอาหารและยอดขายจะไม่ปะปนกับร้านจริง`;
+                    banner.className = "bg-amber-500 text-slate-900 font-bold text-center text-xs py-1.5 px-4 z-[110] relative shadow-inner block";
+                } else {
+                    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1.5 animate-bounce"></i> โหมดทดสอบออฟไลน์ (Test Mode) - ออเดอร์และยอดขายที่ทำจากเครื่องนี้จะไม่ส่งผลต่อร้านจริง`;
+                    banner.className = "bg-amber-500 text-slate-900 font-bold text-center text-xs py-1.5 px-4 z-[110] relative shadow-inner block";
+                }
+            } else {
+                banner.className = "hidden";
+            }
+        };
+
+        // รันตรวจเช็คแบนเนอร์ช่วงโหลดหน้าเว็บแรก
+        document.addEventListener('DOMContentLoaded', () => {
+            window.updateTestModeBanner();
+        });
+
+        
         let allMenu = []; let allMenuRaw = {}; 
         let globalOptions = []; let globalOptionsRaw = {};
         let allTables = []; 
@@ -111,6 +160,73 @@
             return keysToDelete.length;
         }
 
+        // 🧪 ระบบเคลียร์ขยะข้อมูลทดสอบเบื้องหลังอัตโนมัติ (ลบข้อมูลที่อายุเกิน 30 วัน)
+        async function runTestBackgroundCleanup() {
+            try {
+                console.log("[Test Mode] Checking for old test data to auto-cleanup...");
+                const retentionDays = 30; // ลบข้อมูลทดสอบที่เก่ากว่า 30 วัน
+                const cutoff = new Date();
+                cutoff.setDate(cutoff.getDate() - retentionDays);
+                const cutoffTime = cutoff.getTime();
+
+                const [ordersData, historyData, logsData] = await Promise.all([
+                    fetchFirebaseJson('ActiveOrders'),
+                    fetchFirebaseJson('OrderHistory'),
+                    fetchFirebaseJson('AuditLogs')
+                ]);
+
+                // 1. เคลียร์คิวออเดอร์ค้างในห้องทดสอบ (ActiveOrders)
+                const oldActiveKeys = [];
+                for (let key in ordersData) {
+                    const order = ordersData[key];
+                    if (order && order.timestamp) {
+                        const time = new Date(order.timestamp).getTime();
+                        if (!Number.isNaN(time) && time < cutoffTime) {
+                            oldActiveKeys.push(key);
+                        }
+                    }
+                }
+                if (oldActiveKeys.length > 0) {
+                    await deleteKeysInChunks('ActiveOrders', oldActiveKeys);
+                    console.log(`[Test Mode] Auto-cleanup: Deleted ${oldActiveKeys.length} old active test orders`);
+                }
+
+                // 2. เคลียร์ประวัติยอดขายแยกรายวัน (OrderHistory)
+                const oldHistoryDates = [];
+                for (let dateStr in historyData) {
+                    const time = new Date(dateStr).getTime();
+                    if (!Number.isNaN(time) && time < cutoffTime) {
+                        oldHistoryDates.push(dateStr);
+                    }
+                }
+                if (oldHistoryDates.length > 0) {
+                    await Promise.all(oldHistoryDates.map(dateKey => 
+                        fetch(`${FIREBASE_URL}TestData/OrderHistory/${dateKey}.json`, { method: 'DELETE' })
+                    ));
+                    console.log(`[Test Mode] Auto-cleanup: Deleted ${oldHistoryDates.length} old test history dates:`, oldHistoryDates);
+                }
+
+                // 3. เคลียร์บันทึกการทำงานของโหมดทดสอบ (AuditLogs)
+                const oldLogKeys = [];
+                for (let key in logsData) {
+                    const log = logsData[key];
+                    if (log && log.timestamp) {
+                        const time = new Date(log.timestamp).getTime();
+                        if (!Number.isNaN(time) && time < cutoffTime) {
+                            oldLogKeys.push(key);
+                        }
+                    }
+                }
+                if (oldLogKeys.length > 0) {
+                    await deleteKeysInChunks('AuditLogs', oldLogKeys);
+                    console.log(`[Test Mode] Auto-cleanup: Deleted ${oldLogKeys.length} old test audit logs`);
+                }
+                console.log("[Test Mode] Background auto-cleanup completed successfully.");
+            } catch (e) {
+                console.error("[Test Mode] Error running background auto-cleanup:", e);
+            }
+        }
+
         function showModal(type, title, message, onConfirm) {
             const modal = document.getElementById('customModal');
             const iconEl = document.getElementById('customModalIcon');
@@ -170,6 +286,11 @@
                         ...settingsData,
                         receipt: { ...appSettings.receipt, ...(settingsData.receipt || {}) }
                     };
+                }
+
+                // 🧪 รันระบบเคลียร์ขยะข้อมูลทดสอบเบื้องหลังอัตโนมัติ
+                if (IS_TEST_MODE) {
+                    runTestBackgroundCleanup();
                 }
 
             } catch (e) { console.error("Load Error:", e); }

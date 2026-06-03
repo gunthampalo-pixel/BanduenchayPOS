@@ -11,6 +11,12 @@
 </head>
 <body class="min-h-screen">
 
+    <!-- ⚠️ Test Mode Banner -->
+    <div id="test-mode-banner" class="hidden bg-amber-500 text-slate-900 font-bold text-center text-xs py-1.5 px-4 z-[110] relative shadow-inner">
+        <i class="fa-solid fa-triangle-exclamation mr-1.5 animate-bounce"></i>
+        โหมดทดสอบ (Test Mode) - ออเดอร์และยอดขายที่ทำจากเครื่องนี้จะไม่ส่งผลต่อร้านจริง
+    </div>
+
     <!-- ========================================== -->
     <!-- 📦 MODULE 1: ระบบล็อกอิน (Auth System) -->
     <!-- ========================================== -->
@@ -787,6 +793,12 @@
                     <label id="ownerClearAllSalesContainer" class="hidden flex items-center gap-2 text-xs font-bold text-red-700 bg-white p-2.5 rounded-xl border border-red-200 cursor-pointer mt-3 shadow-sm select-none">
                         <input type="checkbox" id="clearAllSalesCheckbox" onchange="appAdmin.onClearAllSalesCheckboxChange(this)" class="w-4 h-4 text-red-600 rounded cursor-pointer">
                         <span>ล้างยอดขายและประวัติทั้งหมด (เคลียร์บิลทดสอบเป็น 0)</span>
+                    </label>
+                    
+                    <!-- 🌟 ส่วนเคลียร์บิลตามช่วงวันที่กำลังเลือก (Selective Range Wipe) 🌟 -->
+                    <label id="ownerClearRangeSalesContainer" class="hidden flex items-center gap-2 text-xs font-bold text-red-700 bg-white p-2.5 rounded-xl border border-red-200 cursor-pointer mt-2 shadow-sm select-none">
+                        <input type="checkbox" id="clearRangeSalesCheckbox" onchange="appAdmin.onClearRangeSalesCheckboxChange(this)" class="w-4 h-4 text-red-600 rounded cursor-pointer">
+                        <span id="clearRangeSalesText">ล้างยอดขายเฉพาะของช่วงวันที่กำลังเลือก</span>
                     </label>
                     
                     <p class="text-[10px] text-red-700 mt-2 leading-relaxed" id="clearDataModalHint">
