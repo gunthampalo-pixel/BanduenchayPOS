@@ -176,7 +176,7 @@
                 return;
             }
             
-            sugBox.innerHTML = matches.map(item => {
+            let suggestionsHtml = matches.map(item => {
                 const name = item.Name;
                 const idx = name.toLowerCase().indexOf(query);
                 let highlighted = name;
@@ -193,6 +193,9 @@
                 </button>`;
             }).join('');
             
+            suggestionsHtml += `<button onclick="document.getElementById('menuSearchSuggestions').classList.add('hidden')" class="w-full text-center p-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl mt-1.5 border border-dashed border-red-200 active:scale-95 transition-all"><i class="fa-solid fa-chevron-up mr-1"></i> ย่อกล่องช่วยพิมพ์ (ดูรายการด้านหลัง)</button>`;
+            
+            sugBox.innerHTML = suggestionsHtml;
             sugBox.classList.remove('hidden');
         }
 
@@ -233,6 +236,11 @@
             }
         });
 
+        // 🌟 ปิดกล่องคำแนะนำการค้นหาเมื่อมีการเลื่อนหน้าจอ (สไลด์เลื่อนดูเมนูด้านหลัง)
+        window.addEventListener('scroll', function() {
+            document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
+        }, { capture: true, passive: true });
+
         function openOptionModal(item) {
             currentSelectingItem = item; document.getElementById('optItemName').innerText = item.Name;
             let basePrice = item.Price || 0; if(item.Variants && item.Variants.length > 0) basePrice = item.Variants[0].price; document.getElementById('optItemPrice').innerText = `฿${basePrice}`;
@@ -250,6 +258,22 @@
                     } });
             }
             if(item.OptionGroup && (!item.OptionSets || item.OptionSets.length === 0)) { html += `<div class="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl mb-3 border border-amber-200">พบข้อมูลท็อปปิ้งแบบเก่า (${item.OptionGroup}) กรุณาเข้าไปกดผูกเซ็ตท็อปปิ้งแบบใหม่ในหน้าการจัดการครับ</div>`; }
+            
+            // เพิ่มกล่องแอดออนพิเศษ (กำหนดเอง)
+            html += `<div class="mb-4 bg-teal-50/50 p-3 rounded-2xl border border-teal-100">
+                <p class="text-xs font-bold text-teal-800 mb-2 flex justify-between">
+                    <span>✨ เพิ่มตัวเลือกพิเศษ (กำหนดเอง)</span>
+                    <span class="text-[10px] text-teal-600 font-normal">ใช้เมื่อตัวเลือกในระบบไม่ตรง/ไม่ครบ</span>
+                </p>
+                <div class="grid grid-cols-[1.5fr_1fr] gap-2">
+                    <input type="text" id="customAddonName" placeholder="ระบุชื่อ (เช่น เพิ่มวิปครีม, เพิ่มไข่ดาว)" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-teal-500">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">฿</span>
+                        <input type="number" id="customAddonPrice" placeholder="ราคาเสริม" min="0" class="w-full pl-6 pr-2 p-2.5 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-teal-500">
+                    </div>
+                </div>
+            </div>`;
+            
             html += `<div class="mb-4"><p class="text-sm font-bold text-slate-800 mb-2 bg-slate-100 px-3 py-2 rounded-xl">หมายเหตุเพิ่มเติม</p><input type="text" id="optNote" placeholder="เช่น เผ็ดน้อย, ไม่ใส่ผัก, แยกน้ำ..." class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500"></div>`;
             document.getElementById('optionsContainer').innerHTML = html; document.getElementById('optionModal').classList.remove('hidden');
         }
@@ -262,6 +286,15 @@
             if(selectedVar) { if(selectedVar.value !== 'ปกติ' && selectedVar.value !== '') { finalName += ` (${selectedVar.value})`; } finalPrice = Number(selectedVar.dataset.price); } 
             else if (currentSelectingItem.Variants && currentSelectingItem.Variants.length > 0) { finalPrice = currentSelectingItem.Variants[0].price; }
             document.querySelectorAll('#optionsContainer input[type="checkbox"]:checked, #optionsContainer input[type="radio"]:checked').forEach(el => { if (el.value !== "NONE" && el.name !== "opt_variant") { addonTexts.push(el.value); optionsTotalPrice += Number(el.dataset.price); } });
+            
+            // อ่านแอดออนพิเศษ (กำหนดเอง)
+            const customAddonName = document.getElementById('customAddonName')?.value.trim();
+            const customAddonPrice = Number(document.getElementById('customAddonPrice')?.value) || 0;
+            if (customAddonName) {
+                addonTexts.push(customAddonPrice > 0 ? `${customAddonName}: ฿${customAddonPrice}` : customAddonName);
+                optionsTotalPrice += customAddonPrice;
+            }
+
             let noteText = document.getElementById('optNote').value.trim(); if(addonTexts.length > 0) { finalName += ` [${addonTexts.join(', ')}]`; }
             addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category); closeOptionModal();
         }
