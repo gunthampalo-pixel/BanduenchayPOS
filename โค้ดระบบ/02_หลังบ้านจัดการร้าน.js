@@ -1390,7 +1390,7 @@
                     }
                     input.value = base64Str;
                     self.previewImage();
-                    alert("✅ อัปโหลดรูปภาพเมนูเรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย)");
+                    alert("✅ อัปโหลด/ถ่ายรูปภาพเมนูเรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย)");
                 });
             },
             handlePromptPayQrUpload: function(event) {
