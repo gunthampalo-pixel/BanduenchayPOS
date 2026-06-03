@@ -850,6 +850,54 @@
         </div>
     </div>
     <div id="qrModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"><div class="bg-white w-full max-w-md rounded-3xl p-6 text-center relative shadow-2xl max-h-[92vh] overflow-y-auto"><button onclick="document.getElementById('qrModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full w-8 h-8 font-bold">✕</button><h2 class="text-xl font-bold text-gray-800 mb-1">ชำระเงิน โต๊ะ <span id="qrTableNo" class="text-blue-600">A1</span></h2><div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 my-4 text-left space-y-2"><div class="flex justify-between text-sm text-slate-500"><span>ยอดก่อนส่วนลด</span><b id="checkoutSubtotal" class="text-slate-800">฿0</b></div><div id="checkoutDiscountLine" class="hidden flex justify-between text-sm text-red-500"><span>ส่วนลด</span><b id="checkoutDiscountAmount">-฿0</b></div><div class="flex justify-between border-t border-dashed border-slate-200 pt-2"><span class="font-bold text-slate-700">ยอดสุทธิที่ต้องชำระ</span><b class="text-3xl font-bold text-green-600" id="qrTotalAmount">฿0</b></div></div><div id="discountBox" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-left"><div class="flex justify-between items-center mb-2"><p class="text-sm font-bold text-amber-900"><i class="fa-solid fa-tags mr-1"></i> ส่วนลดท้ายบิล</p><span id="discountPermissionBadge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">ตรวจสิทธิ์...</span></div><div class="grid grid-cols-[1fr_1.3fr] gap-2"><select id="discountType" onchange="calculateDiscountPreview()" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"><option value="amount">ลดเป็นบาท</option><option value="percent">ลดเป็น %</option></select><input id="discountValue" type="number" min="0" value="0" oninput="calculateDiscountPreview()" placeholder="จำนวนส่วนลด" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"></div><input id="discountReason" type="text" placeholder="เหตุผล เช่น ลูกค้าประจำ / เคลม / โปรโมชัน" class="mt-2 w-full p-2 rounded-xl border border-amber-200 bg-white text-sm"><p id="discountHint" class="text-[10px] text-amber-700 mt-2 leading-relaxed">ต้องมีสิทธิ์ “อนุมัติส่วนลดท้ายบิล” จึงจะใส่ส่วนลดได้</p></div><div id="promptPayQrBox" class="bg-blue-50 p-4 rounded-2xl mb-6 inline-block border-2 border-blue-200 shadow-inner"><img id="promptPayQrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP" alt="QR Code" class="w-48 h-48 mx-auto rounded-xl"><p id="promptPayQrLabel" class="text-xs text-blue-500 mt-2 font-bold"><i class="fa-solid fa-qrcode mr-1"></i> สแกนเพื่อจ่าย</p></div><div class="grid grid-cols-3 gap-2"><button onclick="confirmPayment('cash')" class="bg-green-100 text-green-700 py-3 rounded-xl font-bold border border-green-300 active:scale-95 text-xs"><i class="fa-solid fa-money-bill-wave mr-1"></i> รับเงินสด</button><button onclick="confirmPayment('transfer')" class="bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 text-xs"><i class="fa-solid fa-qrcode mr-1"></i> โอนเงิน</button><button onclick="confirmPayment('credit')" class="bg-orange-100 text-orange-700 py-3 rounded-xl font-bold border border-orange-300 active:scale-95 text-xs"><i class="fa-solid fa-credit-card mr-1"></i> บัตรเครดิต</button></div></div></div>
+    <!-- 🌟 Modal: เมนูกันเหนียว (Custom Item Dialog) 🌟 -->
+    <div id="customItemModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center">
+        <div class="bg-white w-full sm:max-w-md rounded-t-[32px] p-6 max-h-[90vh] flex flex-col mx-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-teal-800"><i class="fa-solid fa-circle-plus mr-1"></i> เมนูกันเหนียว (ใส่เอง)</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">ใช้ระบุเมนูพิเศษที่ไม่มีในระบบหรือพนักงานคีย์ไม่ทัน</p>
+                </div>
+                <button onclick="window.closeCustomItemModal()" class="p-2 bg-slate-100 rounded-full text-slate-500 w-8 h-8 flex items-center justify-center font-bold">✕</button>
+            </div>
+            
+            <div class="space-y-4 mb-6 flex-1 overflow-y-auto pr-1">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 block">ชื่อรายการอาหาร/เครื่องดื่ม <span class="text-red-500">*</span></label>
+                    <input type="text" id="customItemName" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="ระบุชื่อรายการ เช่น แกงส้มปลาใบกะเพรา" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-semibold text-slate-800">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 mb-1.5 block">ราคาต่อชิ้น (บาท) <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">฿</span>
+                            <input type="number" id="customItemPrice" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="0" min="0" class="w-full pl-7 pr-3 p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-bold text-slate-800">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 mb-1.5 block">แผนกทำอาหาร <span class="text-red-500">*</span></label>
+                        <select id="customItemCategory" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-semibold text-slate-700 cursor-pointer">
+                            <option value="Food">🍲 ครัวร้อน (Food)</option>
+                            <option value="Beverage">🥤 บาร์น้ำ (Beverage)</option>
+                            <option value="Dessert">🍰 ของหวาน (Dessert)</option>
+                            <option value="อื่นๆ">📦 อื่นๆ (Other)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 block">หมายเหตุเพิ่มเติม</label>
+                    <input type="text" id="customItemNote" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="เช่น เผ็ดน้อย, หวาน 50%, แยกน้ำ..." class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                </div>
+            </div>
+            
+            <button onclick="window.confirmCustomItemAndAdd()" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
+                💾 เพิ่มลงตะกร้า
+            </button>
+        </div>
+    </div>
+
     <div id="optionModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center">
         <div class="bg-white w-full sm:max-w-xl rounded-t-[32px] p-6 max-h-[90vh] flex flex-col mx-auto">
             <div class="flex justify-between items-start mb-4">

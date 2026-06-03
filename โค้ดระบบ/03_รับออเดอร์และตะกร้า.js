@@ -10,10 +10,21 @@
 
         function renderCategories() {
             // ดึงเฉพาะหมวดหมู่หลัก (ส่วนก่อนหน้าเครื่องหมาย /)
-            const categories = ['All', ...new Set(allMenu.map(item => {
+            const dbCategories = [...new Set(allMenu.map(item => {
                 if (!item.Category) return null;
                 return item.Category.split('/')[0].trim();
             }).filter(Boolean))];
+            
+            // เรียงให้ 'Special' อยู่ถัดจาก 'อาหารจานเดียว'
+            let categories = ['All'];
+            const targetIdx = dbCategories.indexOf('อาหารจานเดียว');
+            if (targetIdx >= 0) {
+                dbCategories.splice(targetIdx + 1, 0, 'Special');
+            } else {
+                dbCategories.push('Special');
+            }
+            categories = ['All', ...dbCategories];
+            categories = [...new Set(categories)]; // กรองซ้ำซ้อน
             
             const bar = document.getElementById('category-bar');
             if (bar) {
@@ -115,25 +126,44 @@
                 );
             }
             
-            if(filtered.length === 0) {
-                grid.innerHTML = `<div class="col-span-2 sm:col-span-3 text-center py-10 text-gray-400 text-sm">🔍 ไม่พบเมนูที่ตรงกับ "${query}"</div>`;
-                return;
+            let itemsHtml = '';
+            if (filtered.length === 0) {
+                if (activeCategory === 'Special') {
+                    itemsHtml = `<div class="col-span-2 sm:col-span-3 text-center py-6 text-slate-500 text-xs font-semibold bg-teal-50/50 rounded-2xl border border-teal-100 mb-2 p-4">
+                        💡 หน้านี้ใช้สำหรับสั่งเมนูป้อนมือ (Special Item)<br>
+                        กดที่ปุ่ม "เมนูกันเหนียว" ด้านล่างเพื่อพิมพ์ชื่อและราคาได้เลยครับ
+                    </div>`;
+                } else {
+                    itemsHtml = `<div class="col-span-2 sm:col-span-3 text-center py-6 text-slate-400 text-xs font-semibold">🔍 ไม่พบเมนูที่ตรงกับ "${query}"</div>`;
+                }
+            } else {
+                itemsHtml = filtered.map((item) => { 
+                    let fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop'; 
+                    if (item.Category && item.Category.toLowerCase().includes('beverage')) fallbackImg = 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=300&fit=crop'; 
+                    else if (item.Category && item.Category.toLowerCase().includes('dessert')) fallbackImg = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=300&h=300&fit=crop'; 
+                    else if (item.Category && item.Category.toLowerCase().includes('food')) fallbackImg = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=300&fit=crop'; 
+                    
+                    let imgUrl = item.ImageURL ? appAdmin.convertDriveLink(item.ImageURL) : fallbackImg; 
+                    let displayPrice = item.Price || 0;
+                    if(item.Variants && item.Variants.length > 0) displayPrice = item.Variants[0].price;
+
+                    let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
+                    
+                    return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer animate-fade-in active:scale-95 transition-all" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
+                }).join('');
             }
 
-            grid.innerHTML = filtered.map((item) => { 
-                let fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop'; 
-                if (item.Category && item.Category.toLowerCase().includes('beverage')) fallbackImg = 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=300&fit=crop'; 
-                else if (item.Category && item.Category.toLowerCase().includes('dessert')) fallbackImg = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=300&h=300&fit=crop'; 
-                else if (item.Category && item.Category.toLowerCase().includes('food')) fallbackImg = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=300&fit=crop'; 
-                
-                let imgUrl = item.ImageURL ? appAdmin.convertDriveLink(item.ImageURL) : fallbackImg; 
-                let displayPrice = item.Price || 0;
-                if(item.Variants && item.Variants.length > 0) displayPrice = item.Variants[0].price;
+            // เพิ่มการ์ด "เมนูกันเหนียว (กำหนดเอง)" ต่อท้ายลิสต์เสมอ เพื่อให้ใช้ได้ทุกเมื่อ
+            const customCardHtml = `
+            <div class="menu-card bg-gradient-to-br from-teal-50 to-emerald-50 p-2 rounded-xl shadow-sm border border-teal-200 flex flex-col cursor-pointer animate-fade-in active:scale-95 transition-all" onclick="window.openCustomItemModal()">
+                <div class="aspect-square bg-teal-100/50 rounded-lg mb-2 overflow-hidden flex flex-col items-center justify-center text-teal-600 text-2xl">
+                    <i class="fa-solid fa-circle-plus"></i>
+                </div>
+                <p class="font-bold text-teal-800 text-xs px-1 line-clamp-2">เมนูกันเหนียว</p>
+                <span class="text-[9px] text-teal-600 px-1 mt-1 font-semibold"><i class="fa-solid fa-keyboard"></i> พิมพ์ชื่อ/ราคาเอง</span>
+            </div>`;
 
-                let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
-                
-                return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer animate-fade-in" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
-            }).join(''); 
+            grid.innerHTML = itemsHtml + customCardHtml; 
         }
 
         window.searchMenu = function() {
@@ -722,5 +752,47 @@
                 addToCart(combinedName, totalPrice, "", currentComboItem.Category);
                 closeComboModal();
             }
+        };
+
+        // ==========================================
+        // 🌟 CUSTOM FALLBACK ITEM (เมนูกันเหนียว) 🌟
+        // ==========================================
+        window.openCustomItemModal = function() {
+            document.getElementById('customItemName').value = '';
+            document.getElementById('customItemPrice').value = '';
+            document.getElementById('customItemNote').value = '';
+            document.getElementById('customItemCategory').value = 'Food';
+            document.getElementById('customItemModal').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('customItemName').focus();
+            }, 100);
+        };
+
+        window.closeCustomItemModal = function() {
+            document.getElementById('customItemModal').classList.add('hidden');
+        };
+
+        window.confirmCustomItemAndAdd = function() {
+            const nameInput = document.getElementById('customItemName');
+            const priceInput = document.getElementById('customItemPrice');
+            const catSelect = document.getElementById('customItemCategory');
+            const noteInput = document.getElementById('customItemNote');
+
+            const name = nameInput.value.trim();
+            const priceVal = priceInput.value.trim();
+            const category = catSelect.value;
+            const note = noteInput.value.trim();
+
+            if (!name) {
+                return alert("⚠️ กรุณาระบุชื่อรายการเมนูครับ");
+            }
+            if (priceVal === '' || isNaN(priceVal) || Number(priceVal) < 0) {
+                return alert("⚠️ กรุณาระบุราคาต่อชิ้นให้ถูกต้องครับ");
+            }
+
+            const price = Number(priceVal);
+            addToCart(name, price, note, category);
+            window.closeCustomItemModal();
         };
 
