@@ -134,8 +134,14 @@
 
     <div id="page-kitchen" class="page-content pb-24 hidden">
         <div class="bg-orange-50 p-4 border-b flex justify-between items-center sticky top-[56px] z-20">
-            <div>
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
                 <h1 class="text-xl font-bold text-orange-600" id="kitchen-title"><i class="fa-solid fa-fire-burner mr-2"></i>ออเดอร์เข้าใหม่</h1>
+                <select id="kitchenFilterSelect" onchange="changeKitchenFilter(this.value)" class="p-1.5 rounded-xl border border-orange-200 bg-white text-xs font-bold text-orange-700 outline-none cursor-pointer focus:ring-1 focus:ring-orange-500 shadow-sm">
+                    <option value="All">ทุกแผนก / ทั้งหมด</option>
+                    <option value="Food">🍳 ครัวร้อน / อาหารคาว</option>
+                    <option value="Beverage">🥤 บาร์เครื่องดื่ม</option>
+                    <option value="Dessert">🍰 ครัวของหวาน / เบเกอรี่</option>
+                </select>
             </div>
             <button onclick="fetchActiveOrders()" class="bg-white p-2 rounded-full shadow text-orange-500 text-sm w-9 h-9 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
