@@ -83,6 +83,58 @@
             if(endInput) endInput.value = defaultDateStr;
         });
         
+        // 📱 ฟังก์ชันดึงรหัสเครื่องและระบบเครื่องสำหรับ Audit Log
+        function getDeviceID() {
+            let id = localStorage.getItem('bdc_device_uuid');
+            if (!id) {
+                // สร้าง ID แบบสุ่ม 8 หลัก
+                id = 'bdc-' + Math.random().toString(36).substring(2, 10);
+                localStorage.setItem('bdc_device_uuid', id);
+            }
+            return id;
+        }
+
+        function getDeviceInfo() {
+            const ua = navigator.userAgent;
+            let device = "ไม่ระบุอุปกรณ์";
+            let browser = "ไม่ระบุเบราว์เซอร์";
+
+            // ตรวจสอบเครื่องและ OS
+            if (/iPhone/i.test(ua)) {
+                device = "iPhone";
+            } else if (/iPad/i.test(ua)) {
+                device = "iPad";
+            } else if (/Android/i.test(ua)) {
+                const modelMatch = ua.match(/Android[^;]+;\s+([^;\)]+)/);
+                device = modelMatch ? modelMatch[1].trim() : "Android Device";
+            } else if (/Macintosh/i.test(ua)) {
+                device = "Mac OS";
+            } else if (/Windows/i.test(ua)) {
+                device = "Windows PC";
+            } else if (/Linux/i.test(ua)) {
+                device = "Linux PC";
+            }
+
+            // ตรวจสอบเบราว์เซอร์
+            if (/Chrome/i.test(ua) && !/Edge|Edg/i.test(ua) && !/OPR/i.test(ua)) {
+                browser = "Chrome";
+            } else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) {
+                browser = "Safari";
+            } else if (/Firefox/i.test(ua)) {
+                browser = "Firefox";
+            } else if (/Edg|Edge/i.test(ua)) {
+                browser = "Edge";
+            } else if (/OPR|Opera/i.test(ua)) {
+                browser = "Opera";
+            } else if (/FBAN|FBAV/i.test(ua)) {
+                browser = "FB App";
+            } else if (/Line/i.test(ua)) {
+                browser = "Line App";
+            }
+
+            return `${device} (${browser})`;
+        }
+
         // 🌟 ฟังก์ชันส่งข้อมูลประวัติการทำงานไปยัง Firebase (Audit Log)
         async function logActivity(actionType, detail) {
             if(!currentUser) return;
@@ -91,7 +143,9 @@
                 staffName: currentUser.Name || 'System',
                 role: currentUser.Role || currentUser.Position || 'Staff',
                 action: actionType,
-                detail: detail
+                detail: detail,
+                deviceId: getDeviceID(),
+                deviceInfo: getDeviceInfo()
             };
             try { await fetch(`${FIREBASE_URL}AuditLogs.json`, { method: 'POST', body: JSON.stringify(payload) }); } catch (e) { console.error(e); }
         }

@@ -471,6 +471,7 @@
                         if((log.action||'').includes('SAVE')) icon = "fa-floppy-disk text-indigo-500";
                         if((log.action||'').includes('WIPE')) icon = "fa-skull-crossbones text-red-700";
                         
+                        const deviceSpan = log.deviceInfo ? ` <span class="text-indigo-600 ml-1.5" title="Device ID: ${log.deviceId || '-'}"><i class="fa-solid fa-mobile-screen-button"></i> <b>${log.deviceInfo}</b> (${log.deviceId ? log.deviceId.substring(0,8) : '-'})</span>` : '';
                         return `
                         <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
                             <div class="flex justify-between items-start mb-1">
@@ -478,7 +479,7 @@
                                 <span class="text-[10px] text-slate-400"><i class="fa-solid fa-clock"></i> ${dateStr}</span>
                             </div>
                             <p class="text-xs text-slate-600 mb-1">${log.detail}</p>
-                            <p class="text-[10px] text-slate-500 bg-slate-50 inline-block px-1.5 py-0.5 rounded border">👤 ทำรายการโดย: <b>${log.staffName}</b> (${log.role})</p>
+                            <p class="text-[10px] text-slate-500 bg-slate-50 inline-block px-1.5 py-0.5 rounded border">👤 ทำรายการโดย: <b>${log.staffName}</b> (${log.role})${deviceSpan}</p>
                         </div>`;
                     }).join('');
                     container.innerHTML = html;
@@ -494,7 +495,7 @@
                     let logs = Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
                     let csvContent = "\uFEFF"; 
-                    csvContent += "วันที่,เวลา,พนักงาน,ตำแหน่ง (สิทธิ์),การกระทำ (Action),รายละเอียด\n";
+                    csvContent += "วันที่,เวลา,พนักงาน,ตำแหน่ง (สิทธิ์),การกระทำ (Action),รายละเอียด,รหัสเครื่อง (Device ID),อุปกรณ์ที่ใช้\n";
                     
                     logs.forEach(log => {
                         let t = new Date(log.timestamp);
@@ -505,8 +506,10 @@
                         let role = `"${(log.role || 'Staff').replace(/"/g, '""')}"`;
                         let action = `"${(log.action || '-').replace(/"/g, '""')}"`;
                         let detail = `"${(log.detail || '-').replace(/"/g, '""')}"`;
+                        let deviceId = `"${(log.deviceId || '-').replace(/"/g, '""')}"`;
+                        let deviceInfo = `"${(log.deviceInfo || '-').replace(/"/g, '""')}"`;
                         
-                        csvContent += [dateStr, timeStr, staffName, role, action, detail].join(",") + "\n";
+                        csvContent += [dateStr, timeStr, staffName, role, action, detail, deviceId, deviceInfo].join(",") + "\n";
                     });
                     
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -616,6 +619,7 @@
                         let p = staff.Permissions;
                         if(p) {
                             if(p.order) pIcons += "🛒 ";
+                            if(p.status) pIcons += "📋 ";
                             if(p.kitchen) pIcons += "🧑‍🍳 ";
                             if(p.cashier) pIcons += "💰 ";
                             if(p.discount) pIcons += "🏷️ ";
@@ -656,6 +660,7 @@
                 const passwordInput = document.getElementById('staffPassword');
                 
                 const cbOrder = document.getElementById('permOrder');
+                const cbStatus = document.getElementById('permStatus');
                 const cbKitchen = document.getElementById('permKitchen');
                 const cbCashier = document.getElementById('permCashier');
                 const cbDiscount = document.getElementById('permDiscount');
@@ -676,6 +681,7 @@
                     
                     if (staff.Permissions) {
                         cbOrder.checked = staff.Permissions.order || false;
+                        cbStatus.checked = staff.Permissions.status || false;
                         cbKitchen.checked = staff.Permissions.kitchen || false;
                         cbCashier.checked = staff.Permissions.cashier || false;
                         cbDiscount.checked = staff.Permissions.discount || staff.Permissions.admin || false;
@@ -688,6 +694,7 @@
                     } else {
                         const r = (staff.Role || staff.Position || '').toLowerCase();
                         cbOrder.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager');
+                        cbStatus.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager') || r.includes('kitchen') || r.includes('cashier');
                         cbKitchen.checked = r.includes('kitchen') || r.includes('bar') || r.includes('admin') || r.includes('manager');
                         cbCashier.checked = r.includes('cashier') || r.includes('admin') || r.includes('manager');
                         cbDiscount.checked = r.includes('admin') || r.includes('manager') || r.includes('owner');
@@ -703,7 +710,7 @@
                     nameInput.value = "";
                     usernameInput.value = "";
                     passwordInput.value = "";
-                    cbOrder.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
+                    cbOrder.checked = true; cbStatus.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
                     cbMenu.checked = false; cbTopping.checked = false; cbTable.checked = false;
                     cbClear.checked = false;
                 }
@@ -722,6 +729,7 @@
 
                 const p = {
                     order: document.getElementById('permOrder').checked,
+                    status: document.getElementById('permStatus').checked,
                     kitchen: document.getElementById('permKitchen').checked,
                     cashier: document.getElementById('permCashier').checked,
                     discount: document.getElementById('permDiscount').checked,
@@ -733,7 +741,7 @@
                     clear: document.getElementById('permClear').checked
                 };
                 
-                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table && !p.clear) {
+                if(!p.order && !p.status && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table && !p.clear) {
                     return alert('⚠️ กรุณาติ๊กสิทธิ์การเข้าถึงอย่างน้อย 1 หน้าต่างครับ');
                 }
 

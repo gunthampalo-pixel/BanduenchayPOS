@@ -44,9 +44,10 @@
             let p = user.Permissions;
 
             if (p) {
-                if(p.order) { navOrder.style.display = 'flex'; navStatus.style.display = 'flex'; }
-                if(p.kitchen) { navKitchen.style.display = 'flex'; navStatus.style.display = 'flex'; }
-                if(p.cashier) { navCashier.style.display = 'flex'; navStatus.style.display = 'flex'; }
+                if(p.order) { navOrder.style.display = 'flex'; }
+                if(p.status) { navStatus.style.display = 'flex'; }
+                if(p.kitchen) { navKitchen.style.display = 'flex'; }
+                if(p.cashier) { navCashier.style.display = 'flex'; }
                 if(p.sales) navSales.style.display = 'flex';
                 if(p.admin || p.menu || p.topping || p.table || p.clear) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
             } else {

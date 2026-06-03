@@ -1,4 +1,22 @@
-        window.toggleSalesTab = function(tabName) { if(tabName === 'bills') { document.getElementById('tab-btn-bills').className = "flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow transition-all"; document.getElementById('tab-btn-items').className = "flex-1 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg text-sm font-bold transition-all"; document.getElementById('sales-bills-view').classList.remove('hidden'); document.getElementById('sales-items-view').classList.add('hidden'); } else { document.getElementById('tab-btn-items').className = "flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow transition-all"; document.getElementById('tab-btn-bills').className = "flex-1 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg text-sm font-bold transition-all"; document.getElementById('sales-items-view').classList.remove('hidden'); document.getElementById('sales-bills-view').classList.add('hidden'); } };
+        window.toggleSalesTab = function(tabName) { 
+            if(tabName === 'bills') { 
+                document.getElementById('tab-btn-bills').className = "flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow transition-all"; 
+                document.getElementById('tab-btn-items').className = "flex-1 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg text-sm font-bold transition-all"; 
+                document.getElementById('sales-bills-view').classList.remove('hidden'); 
+                document.getElementById('sales-items-view').classList.add('hidden'); 
+            } else { 
+                document.getElementById('tab-btn-items').className = "flex-1 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold shadow transition-all"; 
+                document.getElementById('tab-btn-bills').className = "flex-1 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg text-sm font-bold transition-all"; 
+                document.getElementById('sales-items-view').classList.remove('hidden'); 
+                document.getElementById('sales-bills-view').classList.add('hidden'); 
+                // ซ่อนแถบลบบิลหลายใบเมื่อเปลี่ยนแท็บ
+                const bar = document.getElementById('bulkDeleteBar');
+                if (bar) {
+                    bar.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                    bar.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                }
+            } 
+        };
         window.toggleAccordion = function(id) { const content = document.getElementById(id); const icon = document.getElementById('icon-' + id); if(content.classList.contains('hidden')) { content.classList.remove('hidden'); icon.style.transform = 'rotate(180deg)'; } else { content.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; } };
         
         // สถานะตัวกรองประเภทชำระเงินและข้อมูล
@@ -64,11 +82,20 @@
                     actionButtonsHtml = `<button onclick="printPaidReceipt('${orderIdSafe}')" class="mt-3 w-full bg-slate-100 text-slate-700 py-2 rounded-xl text-xs font-bold active:scale-95"><i class="fa-solid fa-receipt mr-1"></i> ออกใบเสร็จอีกครั้ง</button>`;
                 }
 
+                // กล่องเช็คบล็อกเลือกหลายรายการสำหรับแอดมิน
+                let checkboxHtml = '';
+                if (canClear) {
+                    checkboxHtml = `<input type="checkbox" class="bill-select-chk w-4.5 h-4.5 rounded text-red-500 border-gray-300 focus:ring-red-500 mr-2.5 cursor-pointer shrink-0" data-id="${orderIdSafe}" data-date="${dateKeySafe}" onchange="window.updateBulkDeleteBar()">`;
+                }
+
                 return `<div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm mb-3">
                     <div class="flex justify-between items-center border-b border-gray-100 pb-2 mb-2">
-                        <div class="flex flex-col gap-0.5">
-                            <span class="font-bold text-indigo-700">${tableLabel} <span class="text-[10px] text-gray-400 font-normal ml-1">#${order.orderId}</span></span>
-                            <div class="mt-0.5">${methodBadge}</div>
+                        <div class="flex items-center">
+                            ${checkboxHtml}
+                            <div class="flex flex-col gap-0.5">
+                                <span class="font-bold text-indigo-700 text-sm">${tableLabel} <span class="text-[10px] text-gray-400 font-normal ml-1">#${order.orderId}</span></span>
+                                <div class="mt-0.5">${methodBadge}</div>
+                            </div>
                         </div>
                         <span class="text-xs text-gray-500"><i class="fa-regular fa-clock"></i> ${timeStr}</span>
                     </div>
@@ -161,7 +188,27 @@
                 <button onclick="toggleSalesTab('items')" id="tab-btn-items" class="flex-1 py-2 bg-white text-indigo-600 border border-indigo-200 rounded-lg text-sm font-bold transition-all">สรุปรายสินค้า</button>
             </div>
             
-            <div id="sales-bills-view" class="space-y-2 pb-10 block">${billsHtml}</div>
+            <div id="sales-bills-view" class="space-y-2 pb-10 block">
+                <!-- แถบเลือกดำเนินการลบหลายรายการแบบ Sticky -->
+                <div id="bulkDeleteBar" class="fixed bottom-4 left-4 right-4 bg-slate-900/95 backdrop-blur text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between z-50 border border-slate-700/50 transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-none">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">เลือกบิลแล้ว</span>
+                        <span class="text-sm font-extrabold text-red-400" id="bulkDeleteCount">0 บิล</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="window.selectAllBills(true)" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                            <i class="fa-solid fa-check-double mr-1"></i> ทั้งหมด
+                        </button>
+                        <button onclick="window.selectAllBills(false)" class="bg-slate-800 hover:bg-slate-700 active:scale-95 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                            <i class="fa-solid fa-xmark mr-1"></i> ยกเลิก
+                        </button>
+                        <button onclick="window.deleteSelectedBills()" class="bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 active:scale-95 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow-lg shadow-red-500/20 transition-all">
+                            <i class="fa-solid fa-trash mr-1"></i> ลบที่เลือก
+                        </button>
+                    </div>
+                </div>
+                ${billsHtml}
+            </div>
             <div id="sales-items-view" class="space-y-2 pb-10 hidden">${itemsHtml}</div>
             `;
         };
@@ -387,6 +434,71 @@
                     fetchSalesData();
                 } catch (e) {
                     alert("❌ เกิดข้อผิดพลาดในการลบบิล: " + e.message);
+                }
+            });
+        };
+
+        window.updateBulkDeleteBar = function() {
+            const checkboxes = document.querySelectorAll('.bill-select-chk:checked');
+            const count = checkboxes.length;
+            const bar = document.getElementById('bulkDeleteBar');
+            const countText = document.getElementById('bulkDeleteCount');
+            if (bar && countText) {
+                countText.innerText = count + ' บิล';
+                if (count > 0) {
+                    bar.classList.remove('opacity-0', 'translate-y-10', 'pointer-events-none');
+                    bar.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                } else {
+                    bar.classList.add('opacity-0', 'translate-y-10', 'pointer-events-none');
+                    bar.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                }
+            }
+        };
+
+        window.selectAllBills = function(status) {
+            const checkboxes = document.querySelectorAll('.bill-select-chk');
+            checkboxes.forEach(chk => {
+                chk.checked = status;
+            });
+            window.updateBulkDeleteBar();
+        };
+
+        window.deleteSelectedBills = function() {
+            const checkboxes = document.querySelectorAll('.bill-select-chk:checked');
+            if (checkboxes.length === 0) return;
+
+            const isOwner = currentUser && ((currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner' || currentUser.Username === 'gun');
+            const canClear = currentUser && (currentUser.Permissions?.admin || currentUser.Permissions?.clear || isOwner);
+            if (!canClear) {
+                return alert("⚠️ คุณไม่มีสิทธิ์ลบบิล");
+            }
+
+            const enteredPin = prompt(`🔑 กรุณาใส่ Owner PIN เพื่อยืนยันการลบบิลจำนวน ${checkboxes.length} บิลถาวร`);
+            if (enteredPin === null) return; // กดยกเลิก
+            if (enteredPin !== appSettings.ownerPin) {
+                return alert("❌ รหัส Owner PIN ไม่ถูกต้อง! การดำเนินการถูกยกเลิก");
+            }
+
+            showModal('confirm', 'ลบบิลหลายรายการถาวร', `⚠️ คุณยืนยันที่จะลบบิลทั้งหมดที่เลือกจำนวน ${checkboxes.length} บิลหรือไม่?\nยอดขายและข้อมูลในบิลเหล่านี้จะถูกลบออกจากระบบอย่างถาวรและไม่สามารถกู้คืนได้`, async () => {
+                try {
+                    const deletePromises = Array.from(checkboxes).map(async chk => {
+                        const orderId = chk.getAttribute('data-id');
+                        const dateKey = chk.getAttribute('data-date');
+                        const path = dateKey ? `OrderHistory/${dateKey}/${orderId}.json` : `Orders/${orderId}.json`;
+                        const res = await fetch(`${FIREBASE_URL}${path}`, { method: 'DELETE' });
+                        if (!res.ok) throw new Error(`ลบข้อมูลบิล #${orderId} ไม่สำเร็จ`);
+                        return { orderId, dateKey };
+                    });
+
+                    const deletedResults = await Promise.all(deletePromises);
+                    const deletedInfo = deletedResults.map(r => `#${r.orderId} (${r.dateKey || 'Legacy'})`).join(', ');
+
+                    alert(`🗑️ ลบสำเร็จทั้งหมด ${deletedResults.length} บิลแล้ว`);
+                    logActivity('DELETE_MULTIPLE_ORDERS', `ลบบิลชำระเงินถาวรหลายรายการ จำนวน ${deletedResults.length} บิล: ${deletedInfo}`);
+                    fetchSalesData();
+                } catch (e) {
+                    alert("❌ เกิดข้อผิดพลาดในการลบบิลบางรายการ: " + e.message);
+                    fetchSalesData();
                 }
             });
         };
