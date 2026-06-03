@@ -40,7 +40,7 @@
                 if(p.kitchen) { navKitchen.style.display = 'flex'; navStatus.style.display = 'flex'; }
                 if(p.cashier) { navCashier.style.display = 'flex'; navStatus.style.display = 'flex'; }
                 if(p.sales) navSales.style.display = 'flex';
-                if(p.admin || p.menu || p.topping || p.table) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
+                if(p.admin || p.menu || p.topping || p.table || p.clear) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
             } else {
                 const roleStr = (user.Role || user.Position || "").toLowerCase(); 
                 let isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ'); 
@@ -72,7 +72,7 @@
                     btnStaff.style.display = p.admin ? 'flex' : 'none';
                     btnReceipt.style.display = p.admin ? 'flex' : 'none';
                     btnAudit.style.display = p.admin ? 'flex' : 'none';
-                    btnClear.style.display = p.admin ? 'flex' : 'none';
+                    btnClear.style.display = (p.admin || p.clear) ? 'flex' : 'none';
                 } else {
                     const roleStr = (user.Role || user.Position || "").toLowerCase();
                     const isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ');

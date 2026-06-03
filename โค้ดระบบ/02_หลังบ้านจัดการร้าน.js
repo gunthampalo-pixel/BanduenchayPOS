@@ -81,8 +81,8 @@
                 if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
                 let p = currentUser.Permissions || {};
                 const isOwner = (currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner';
-                const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager') || isOwner;
-                if(!isAdmin) return alert("⚠️ เฉพาะผู้จัดการ (Admin) หรือเจ้าของร้านเท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
+                const isAdmin = p.admin || p.clear || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager') || isOwner;
+                if(!isAdmin) return alert("⚠️ เฉพาะผู้ที่มีสิทธิ์ล้างข้อมูลระบบ หรือเจ้าของร้านเท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
 
                 document.getElementById('adminClearDataModal').classList.remove('hidden');
                 document.getElementById('dataRangeDisplay').innerText = "กำลังตรวจสอบ...";
@@ -90,10 +90,11 @@
                 document.getElementById('oldLogsCount').innerText = "0";
                 document.getElementById('clearConfirmPin').value = "";
 
-                // จัดการ Checkbox สำหรับ Owner
+                // จัดการ Checkbox สำหรับ Owner (แสดงเฉพาะคนที่มีสิทธิ์ล้างข้อมูลระบบ clear หรือ admin)
+                const canClearAll = p.admin === true || p.clear === true;
                 const ownerEl = document.getElementById('ownerClearAllSalesContainer');
                 if (ownerEl) {
-                    if (isOwner) {
+                    if (canClearAll) {
                         ownerEl.classList.remove('hidden');
                     } else {
                         ownerEl.classList.add('hidden');
@@ -156,11 +157,7 @@
                 const isClearAll = document.getElementById('clearAllSalesCheckbox')?.checked || false;
 
                 if (isClearAll) {
-                    // ล้างข้อมูลทั้งหมด (Owner เท่านั้น)
-                    const isOwner = (currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner';
-                    if (!isOwner) {
-                        return alert("❌ เฉพาะเจ้าของร้าน (Owner) เท่านั้นที่สามารถทำการล้างยอดขายทั้งหมดได้!");
-                    }
+                    // ล้างข้อมูลทั้งหมด (ควบคุมด้วย Owner PIN)
                     if (!this.verifyOwnerPin(pin)) {
                         return alert("❌ Owner PIN ไม่ถูกต้อง! ไม่สามารถล้างยอดขายได้");
                     }
@@ -518,6 +515,7 @@
                             if(p.menu) pIcons += "🍔 ";
                             if(p.topping) pIcons += "🥤 ";
                             if(p.table) pIcons += "🪑 ";
+                            if(p.clear) pIcons += "🗑️ ";
                             if(p.admin) pIcons += "⚙️ ";
                         } else {
                             pIcons = "🔄 รอตั้งค่าสิทธิ์ใหม่";
@@ -558,6 +556,7 @@
                 const cbMenu = document.getElementById('permMenu');
                 const cbTopping = document.getElementById('permTopping');
                 const cbTable = document.getElementById('permTable');
+                const cbClear = document.getElementById('permClear');
 
                 if (id) {
                     const staff = staffData[id];
@@ -577,6 +576,7 @@
                         cbMenu.checked = staff.Permissions.menu || staff.Permissions.admin || false;
                         cbTopping.checked = staff.Permissions.topping || staff.Permissions.admin || false;
                         cbTable.checked = staff.Permissions.table || staff.Permissions.admin || false;
+                        cbClear.checked = staff.Permissions.clear || staff.Permissions.admin || false;
                     } else {
                         const r = (staff.Role || staff.Position || '').toLowerCase();
                         cbOrder.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager');
@@ -588,6 +588,7 @@
                         cbMenu.checked = r.includes('admin') || r.includes('manager');
                         cbTopping.checked = r.includes('admin') || r.includes('manager');
                         cbTable.checked = r.includes('admin') || r.includes('manager');
+                        cbClear.checked = r.includes('admin') || r.includes('manager');
                     }
                 } else {
                     modalTitle.innerText = "เพิ่มพนักงานใหม่";
@@ -596,6 +597,7 @@
                     passwordInput.value = "";
                     cbOrder.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
                     cbMenu.checked = false; cbTopping.checked = false; cbTable.checked = false;
+                    cbClear.checked = false;
                 }
                 document.getElementById('adminStaffFormModal').classList.remove('hidden');
             },
@@ -619,10 +621,11 @@
                     admin: document.getElementById('permAdmin').checked,
                     menu: document.getElementById('permMenu').checked,
                     topping: document.getElementById('permTopping').checked,
-                    table: document.getElementById('permTable').checked
+                    table: document.getElementById('permTable').checked,
+                    clear: document.getElementById('permClear').checked
                 };
                 
-                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table) {
+                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table && !p.clear) {
                     return alert('⚠️ กรุณาติ๊กสิทธิ์การเข้าถึงอย่างน้อย 1 หน้าต่างครับ');
                 }
 
