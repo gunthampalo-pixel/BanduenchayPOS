@@ -80,14 +80,28 @@
                 // เช็คสิทธิ์ก่อน
                 if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
                 let p = currentUser.Permissions || {};
-                const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager');
-                if(!isAdmin) return alert("⚠️ เฉพาะผู้จัดการ (Admin) เท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
+                const isOwner = (currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner';
+                const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager') || isOwner;
+                if(!isAdmin) return alert("⚠️ เฉพาะผู้จัดการ (Admin) หรือเจ้าของร้านเท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
 
                 document.getElementById('adminClearDataModal').classList.remove('hidden');
                 document.getElementById('dataRangeDisplay').innerText = "กำลังตรวจสอบ...";
                 document.getElementById('oldOrdersCount').innerText = "0";
                 document.getElementById('oldLogsCount').innerText = "0";
                 document.getElementById('clearConfirmPin').value = "";
+
+                // จัดการ Checkbox สำหรับ Owner
+                const ownerEl = document.getElementById('ownerClearAllSalesContainer');
+                if (ownerEl) {
+                    if (isOwner) {
+                        ownerEl.classList.remove('hidden');
+                    } else {
+                        ownerEl.classList.add('hidden');
+                    }
+                }
+                const chk = document.getElementById('clearAllSalesCheckbox');
+                if (chk) chk.checked = false;
+                this.onClearAllSalesCheckboxChange(chk);
 
                 try {
                     const cutoffDate = getCleanupCutoffDate();
@@ -124,75 +138,139 @@
                 document.getElementById('adminClearDataModal').classList.add('hidden');
             },
 
+            onClearAllSalesCheckboxChange: function(el) {
+                const hint = document.getElementById('clearDataModalHint');
+                if (hint) {
+                    if (el && el.checked) {
+                        hint.innerHTML = "💡 <b>โหมดล้างยอดทั้งหมด:</b> กรุณากรอก <b>Owner PIN</b> เพื่อยืนยันการเคลียร์ฐานข้อมูลบิลและประวัติทั้งหมด";
+                        hint.classList.add('text-red-700');
+                    } else {
+                        hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
+                        hint.classList.remove('text-red-700');
+                    }
+                }
+            },
+
             executeClearData: async function() {
                 const pin = document.getElementById('clearConfirmPin').value;
-                
-                // 🌟 แก้ปัญหา PIN ที่เป็นตัวเลขในฐานข้อมูลไม่ตรงกับข้อความที่พิมพ์
-                const expectedPin = String(currentUser?.Password ?? currentUser?.PIN ?? "").trim();
-                if(!expectedPin || String(pin).trim() !== expectedPin) {
-                    return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง!");
-                }
+                const isClearAll = document.getElementById('clearAllSalesCheckbox')?.checked || false;
 
-                const cutoffDate = getCleanupCutoffDate();
-                const cutoffTime = cutoffDate.getTime();
-                const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
-                if (!okToDelete) return;
+                if (isClearAll) {
+                    // ล้างข้อมูลทั้งหมด (Owner เท่านั้น)
+                    const isOwner = (currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner';
+                    if (!isOwner) {
+                        return alert("❌ เฉพาะเจ้าของร้าน (Owner) เท่านั้นที่สามารถทำการล้างยอดขายทั้งหมดได้!");
+                    }
+                    if (!this.verifyOwnerPin(pin)) {
+                        return alert("❌ Owner PIN ไม่ถูกต้อง! ไม่สามารถล้างยอดขายได้");
+                    }
 
-                const btn = document.getElementById('btnConfirmClear');
-                const oldText = btn.innerHTML;
-                btn.innerHTML = "⏳ กำลังกวาดลบข้อมูล...";
-                btn.disabled = true;
+                    const okToDelete = confirm(`🚨🚨🚨 ยืนยันการล้างยอดขายทั้งหมด 🚨🚨🚨\n\nคุณกำลังจะลบข้อมูลประวัติยอดขายและประวัติการทำงานของพนักงานทั้งหมดตั้งแต่อดีตจนถึงปัจจุบัน!\n\nยอดรวมของร้านทั้งหมดจะถูกรีเซ็ตกลับเป็น 0 บาท\n\nกด OK เพื่อยืนยันการลบทั้งหมด`);
+                    if (!okToDelete) return;
 
-                try {
-                    const [ordersData, historyData, logsData] = await Promise.all([
-                        fetchFirebaseJson('Orders'),
-                        fetchFirebaseJson('OrderHistory'),
-                        fetchFirebaseJson('AuditLogs')
-                    ]);
-                    
-                    // 1. เคลียร์บิลรูปแบบเก่า ( Orders/ )
-                    const oldOrderKeys = getCleanupKeys(ordersData, cutoffTime, shouldCleanupOrder);
-                    const deletedLegacyCount = await deleteKeysInChunks('Orders', oldOrderKeys);
-                    
-                    // 2. เคลียร์บิลรูปแบบใหม่รายวัน ( OrderHistory/YYYY-MM-DD )
-                    const oldHistoryDates = [];
-                    let deletedHistoryOrdersCount = 0;
-                    for (let dateStr in historyData) {
-                        const time = new Date(dateStr).getTime();
-                        if (!Number.isNaN(time) && time < cutoffTime) {
-                            oldHistoryDates.push(dateStr);
-                            const dayOrders = historyData[dateStr] || {};
-                            deletedHistoryOrdersCount += Object.keys(dayOrders).length;
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังล้างข้อมูลทั้งหมด...";
+                    btn.disabled = true;
+
+                    try {
+                        // ส่งคำสั่ง DELETE ไปยัง Firebase Realtime Database
+                        await Promise.all([
+                            fetch(`${FIREBASE_URL}Orders.json`, { method: 'DELETE' }),
+                            fetch(`${FIREBASE_URL}OrderHistory.json`, { method: 'DELETE' }),
+                            fetch(`${FIREBASE_URL}AuditLogs.json`, { method: 'DELETE' })
+                        ]);
+
+                        // สรรค์สร้างประวัติความปลอดภัยใหม่ (Audit Log) ชิ้นแรกหลังรีเซ็ตระบบ
+                        await logActivity('WIPE_ALL_SALES', 'ล้างข้อมูลยอดขายและประวัติการทำรายการทั้งหมดในร้าน (รีเซ็ตระบบเป็น 0)');
+
+                        alert("✅ ล้างข้อมูลยอดขายและประวัติทั้งหมดเรียบร้อยแล้ว!\n\nยอดขายของร้านทั้งหมดถูกรีเซ็ตกลับเป็น 0 บาทเรียบร้อยครับ");
+
+                        this.closeClearDataModal();
+
+                        // สั่งรีเฟรชหน้าจอทั้งหมด
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการล้างข้อมูลทั้งหมด: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                } else {
+                    // การเคลียร์ข้อมูลเก่าตามรอบปกติ
+                    const expectedPin = String(currentUser?.Password ?? currentUser?.PIN ?? "").trim();
+                    if(!expectedPin || String(pin).trim() !== expectedPin) {
+                        return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง!");
+                    }
+
+                    const cutoffDate = getCleanupCutoffDate();
+                    const cutoffTime = cutoffDate.getTime();
+                    const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
+                    if (!okToDelete) return;
+
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังกวาดลบข้อมูล...";
+                    btn.disabled = true;
+
+                    try {
+                        const [ordersData, historyData, logsData] = await Promise.all([
+                            fetchFirebaseJson('Orders'),
+                            fetchFirebaseJson('OrderHistory'),
+                            fetchFirebaseJson('AuditLogs')
+                        ]);
+                        
+                        // 1. เคลียร์บิลรูปแบบเก่า ( Orders/ )
+                        const oldOrderKeys = getCleanupKeys(ordersData, cutoffTime, shouldCleanupOrder);
+                        const deletedLegacyCount = await deleteKeysInChunks('Orders', oldOrderKeys);
+                        
+                        // 2. เคลียร์บิลรูปแบบใหม่รายวัน ( OrderHistory/YYYY-MM-DD )
+                        const oldHistoryDates = [];
+                        let deletedHistoryOrdersCount = 0;
+                        for (let dateStr in historyData) {
+                            const time = new Date(dateStr).getTime();
+                            if (!Number.isNaN(time) && time < cutoffTime) {
+                                oldHistoryDates.push(dateStr);
+                                const dayOrders = historyData[dateStr] || {};
+                                deletedHistoryOrdersCount += Object.keys(dayOrders).length;
+                            }
                         }
-                    }
-                    if (oldHistoryDates.length > 0) {
-                        const patch = {};
-                        oldHistoryDates.forEach(dateStr => { patch[dateStr] = null; });
-                        await patchFirebase('OrderHistory', patch);
-                    }
-                    
-                    // 3. เคลียร์ประวัติการทำงานเก่า
-                    const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
-                    const deletedLogsCount = await deleteKeysInChunks('AuditLogs', oldLogKeys);
+                        if (oldHistoryDates.length > 0) {
+                            const patch = {};
+                            oldHistoryDates.forEach(dateStr => { patch[dateStr] = null; });
+                            await patchFirebase('OrderHistory', patch);
+                        }
+                        
+                        // 3. เคลียร์ประวัติการทำงานเก่า
+                        const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
+                        const deletedLogsCount = await deleteKeysInChunks('AuditLogs', oldLogKeys);
 
-                    const deletedOrdersTotal = deletedLegacyCount + deletedHistoryOrdersCount;
-                    const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
-                    await logActivity('SYSTEM_WIPE', `ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วัน (ก่อน ${cutoffFormat}) ลบบิลรวม: ${deletedOrdersTotal}, ลบประวัติ: ${deletedLogsCount}`);
+                        const deletedOrdersTotal = deletedLegacyCount + deletedHistoryOrdersCount;
+                        const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
+                        await logActivity('SYSTEM_WIPE', `ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วัน (ก่อน ${cutoffFormat}) ลบบิลรวม: ${deletedOrdersTotal}, ลบประวัติ: ${deletedLogsCount}`);
 
-                    alert(`✅ ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วันเรียบร้อยแล้ว!\n\n🗑️ ลบบิลที่จบแล้วทั้งหมด: ${deletedOrdersTotal} รายการ\n🗑️ ลบประวัติการใช้งาน: ${deletedLogsCount} รายการ\n\nข้อมูลตั้งค่าร้านและออเดอร์ที่ยังเปิดอยู่ไม่ถูกแตะครับ`);
-                    
-                    this.closeClearDataModal();
-                    
-                    // สั่งรีเฟรชหน้าจอ
-                    activeOrders = {};
-                    window.currentPaidOrders = [];
-                    renderKitchen(); renderStatus(); renderCashier();
-                    fetchSalesData();
-                } catch (e) {
-                    alert("❌ เกิดข้อผิดพลาดในการลบข้อมูล: " + e.message);
-                } finally {
-                    btn.innerHTML = oldText;
-                    btn.disabled = false;
+                        alert(`✅ ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วันเรียบร้อยแล้ว!\n\n🗑️ ลบบิลที่จบแล้วทั้งหมด: ${deletedOrdersTotal} รายการ\n🗑️ ลบประวัติการใช้งาน: ${deletedLogsCount} รายการ\n\nข้อมูลตั้งค่าร้านและออเดอร์ที่ยังเปิดอยู่ไม่ถูกแตะครับ`);
+                        
+                        this.closeClearDataModal();
+                        
+                        // สั่งรีเฟรชหน้าจอ
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการลบข้อมูล: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
                 }
             },
 

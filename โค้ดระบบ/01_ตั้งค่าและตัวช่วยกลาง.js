@@ -1,6 +1,6 @@
 
         const FIREBASE_URL = "https://bdc-app-fb723-default-rtdb.asia-southeast1.firebasedatabase.app/";
-        const CLEANUP_RETENTION_DAYS = 30;
+        const CLEANUP_RETENTION_DAYS = 60;
         const CLEANUP_ORDER_STATUSES = ['paid', 'canceled', 'canceled_cleared'];
         
         let allMenu = []; let allMenuRaw = {}; 

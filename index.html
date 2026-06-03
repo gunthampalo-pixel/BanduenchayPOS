@@ -750,7 +750,7 @@
     <div id="adminClearDataModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-fade-in">
             <div class="p-4 border-b bg-red-50 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-red-900"><i class="fa-solid fa-trash-arrow-up text-red-600 mr-2"></i>เคลียร์ข้อมูลเก่ากว่า 30 วัน</h2>
+                <h2 class="text-lg font-bold text-red-900"><i class="fa-solid fa-trash-arrow-up text-red-600 mr-2"></i>เคลียร์ข้อมูลระบบร้าน</h2>
                 <button onclick="appAdmin.closeClearDataModal()" class="w-8 h-8 bg-red-200 rounded-full text-red-700 font-bold active:scale-95">✕</button>
             </div>
             <div class="p-5 flex-1 space-y-4">
@@ -761,24 +761,31 @@
                 
                 <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
                     <div class="bg-white p-3 rounded-xl border border-slate-200 text-center">
-                        <p class="text-[10px] text-slate-500 mb-1">บิลที่จบแล้วเกิน 30 วัน</p>
+                        <p class="text-[10px] text-slate-500 mb-1">บิลที่จบแล้วเกิน 60 วัน</p>
                         <p id="oldOrdersCount" class="text-2xl font-bold text-red-600">0</p>
                     </div>
                     <div class="bg-white p-3 rounded-xl border border-slate-200 text-center">
-                        <p class="text-[10px] text-slate-500 mb-1">ประวัติใช้งานเกิน 30 วัน</p>
+                        <p class="text-[10px] text-slate-500 mb-1">ประวัติใช้งานเกิน 60 วัน</p>
                         <p id="oldLogsCount" class="text-2xl font-bold text-red-600">0</p>
                     </div>
                 </div>
 
                 <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-800 leading-relaxed">
-                    ระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า 30 วัน: บิลที่จบแล้ว และประวัติการเข้าใช้งาน/การทำรายการเท่านั้น ข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ
+                    ระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า 60 วัน: บิลที่จบแล้ว และประวัติการเข้าใช้งาน/การทำรายการเท่านั้น ข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ
                 </div>
 
                 <div class="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm mt-2">
-                    <label class="text-xs font-bold text-red-800 mb-1 block">PIN / รหัสผ่านของบัญชีที่ล็อกอินอยู่ <span class="text-red-500">*</span></label>
-                    <input type="password" id="clearConfirmPin" placeholder="ถ้าใช้ Admin Test ให้กรอก 1234" class="w-full p-2.5 rounded-xl border border-red-300 bg-white outline-none text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500">
-                    <p class="text-[10px] text-red-700 mt-2 leading-relaxed">
-                        วิธีลบ: ใส่ PIN ของบัญชีที่ล็อกอินอยู่ แล้วกด “ยืนยันการลบ” จากนั้นกด OK ในหน้าต่างยืนยัน ถ้าใช้ Admin Test ให้พิมพ์ <b>1234</b>
+                    <label class="text-xs font-bold text-red-800 mb-1 block">PIN / รหัสผ่านเพื่อยืนยันการทำรายการ <span class="text-red-500">*</span></label>
+                    <input type="password" id="clearConfirmPin" placeholder="กรอกรหัสผ่าน (PIN) ของท่าน..." class="w-full p-2.5 rounded-xl border border-red-300 bg-white outline-none text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500">
+                    
+                    <!-- 🌟 ส่วนเคลียร์บิลทดสอบทั้งหมดสำหรับเจ้าของร้าน (Owner Only) 🌟 -->
+                    <label id="ownerClearAllSalesContainer" class="hidden flex items-center gap-2 text-xs font-bold text-red-700 bg-white p-2.5 rounded-xl border border-red-200 cursor-pointer mt-3 shadow-sm select-none">
+                        <input type="checkbox" id="clearAllSalesCheckbox" onchange="appAdmin.onClearAllSalesCheckboxChange(this)" class="w-4 h-4 text-red-600 rounded cursor-pointer">
+                        <span>ล้างยอดขายและประวัติทั้งหมด (เคลียร์บิลทดสอบเป็น 0)</span>
+                    </label>
+                    
+                    <p class="text-[10px] text-red-700 mt-2 leading-relaxed" id="clearDataModalHint">
+                        วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”
                     </p>
                 </div>
             </div>
