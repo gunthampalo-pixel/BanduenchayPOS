@@ -96,12 +96,81 @@
         }
 
         let isFirstActiveOrdersFetch = true;
+        window.globalAudio = null;
+        let wakeLock = null;
+
+        // Function to request screen wake lock to prevent device from dimming/sleeping
+        async function requestScreenWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    if (wakeLock === null) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        console.log('Screen Wake Lock is active!');
+                        wakeLock.addEventListener('release', () => {
+                            wakeLock = null;
+                        });
+                    }
+                }
+            } catch (err) {
+                console.warn("Screen Wake Lock request failed:", err);
+            }
+        }
+
+        // Re-request wake lock when screen becomes visible again
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                await requestScreenWakeLock();
+            }
+        });
+
+        // Auto unlock helper on first tap/click anywhere
+        async function initAndUnlockAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                
+                if (!window.globalAudio) {
+                    window.globalAudio = new AudioContext();
+                }
+                
+                const ctx = window.globalAudio;
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+                
+                // Play a tiny silent buffer to warm up/unlock the audio system
+                const buffer = ctx.createBuffer(1, 1, 22055);
+                const source = ctx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(ctx.destination);
+                source.start(0);
+            } catch(e) {
+                console.error("Failed to unlock audio:", e);
+            }
+
+            // Lock screen from sleeping/dimming
+            await requestScreenWakeLock();
+        }
+
+        window.addEventListener('click', initAndUnlockAudio);
+        window.addEventListener('touchstart', initAndUnlockAudio);
 
         window.playNotificationSound = function() {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
-                const ctx = new AudioContext();
+                
+                if (!window.globalAudio) {
+                    window.globalAudio = new AudioContext();
+                }
+                
+                const ctx = window.globalAudio;
+                
+                // If context is suspended, try to resume it
+                if (ctx.state === 'suspended') {
+                    ctx.resume();
+                }
+                
                 const now = ctx.currentTime;
                 
                 // Tone 1: C5 (523.25 Hz)
@@ -160,13 +229,9 @@
                 
                 isFirstActiveOrdersFetch = false;
                 
-                // Play notification sound if new order detected and current page is kitchen or cashier or status
+                // Play notification sound if new order detected
                 if (hasNewOrder) {
-                    const currentPageEl = document.querySelector('.page-content:not(.hidden)');
-                    const currentPageId = currentPageEl ? currentPageEl.id : '';
-                    if (['page-kitchen', 'page-cashier', 'page-status'].includes(currentPageId)) {
-                        window.playNotificationSound();
-                    }
+                    window.playNotificationSound();
                 }
                 
                 renderKitchen();
