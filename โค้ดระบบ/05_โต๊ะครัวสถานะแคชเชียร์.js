@@ -98,6 +98,7 @@
         let isFirstActiveOrdersFetch = true;
         window.globalAudio = null;
         let wakeLock = null;
+        window.isUserInteracted = false;
 
         // Function to request screen wake lock to prevent device from dimming/sleeping
         async function requestScreenWakeLock() {
@@ -141,16 +142,17 @@
                 </div>
                 <span class="text-xs font-bold bg-white/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">เปิดเสียง</span>
             `;
-            banner.onclick = async function(e) {
+            banner.onclick = function(e) {
                 e.stopPropagation();
-                await initAndUnlockAudio();
+                initAndUnlockAudio();
                 window.playNotificationSound();
             };
             document.body.appendChild(banner);
         };
 
         // Auto unlock helper on first tap/click anywhere
-        async function initAndUnlockAudio() {
+        function initAndUnlockAudio() {
+            window.isUserInteracted = true;
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 if (!AudioContext) return;
@@ -161,7 +163,7 @@
                 
                 const ctx = window.globalAudio;
                 if (ctx.state === 'suspended') {
-                    await ctx.resume();
+                    ctx.resume();
                 }
                 
                 // Play a tiny silent buffer to warm up/unlock the audio system
@@ -175,7 +177,7 @@
             }
 
             // Lock screen from sleeping/dimming
-            await requestScreenWakeLock();
+            requestScreenWakeLock();
 
             // Remove banner if it exists
             const banner = document.getElementById('audio-unlock-banner');
@@ -196,8 +198,8 @@
                 
                 const ctx = window.globalAudio;
                 
-                // If context is suspended, show banner and skip playing sound
-                if (ctx.state === 'suspended') {
+                // If context is suspended or user has not interacted, show banner and skip playing sound
+                if (ctx.state === 'suspended' || !window.isUserInteracted) {
                     window.showAudioBanner();
                     return;
                 }
@@ -260,14 +262,8 @@
                 
                 // Check audio state on first fetch to show banner if blocked
                 if (isFirstActiveOrdersFetch) {
-                    const AudioContext = window.AudioContext || window.webkitAudioContext;
-                    if (AudioContext) {
-                        if (!window.globalAudio) {
-                            window.globalAudio = new AudioContext();
-                        }
-                        if (window.globalAudio.state === 'suspended') {
-                            window.showAudioBanner();
-                        }
+                    if (!window.isUserInteracted) {
+                        window.showAudioBanner();
                     }
                 }
                 
