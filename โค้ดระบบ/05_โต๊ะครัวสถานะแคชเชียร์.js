@@ -123,6 +123,32 @@
             }
         });
 
+        // Show banner to prompt user interaction to enable sounds
+        window.showAudioBanner = function() {
+            let banner = document.getElementById('audio-unlock-banner');
+            if (banner) return;
+            
+            banner = document.createElement('div');
+            banner.id = 'audio-unlock-banner';
+            banner.className = 'fixed bottom-4 left-4 right-4 bg-teal-600 text-white p-3.5 rounded-2xl shadow-2xl z-[999] flex items-center justify-between animate-bounce cursor-pointer max-w-sm mx-auto border border-teal-500';
+            banner.innerHTML = `
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-volume-high text-lg"></i>
+                    <div class="text-left">
+                        <p class="text-xs font-black">🔊 แตะเพื่ออนุญาตระบบเสียงแจ้งเตือนร้าน</p>
+                        <p class="text-[9px] text-teal-100 font-semibold leading-tight">เบราว์เซอร์ต้องการการสัมผัส 1 ครั้งเพื่อให้เสียงเล่นได้</p>
+                    </div>
+                </div>
+                <span class="text-xs font-bold bg-white/20 px-2.5 py-1.5 rounded-xl whitespace-nowrap">เปิดเสียง</span>
+            `;
+            banner.onclick = async function(e) {
+                e.stopPropagation();
+                await initAndUnlockAudio();
+                window.playNotificationSound();
+            };
+            document.body.appendChild(banner);
+        };
+
         // Auto unlock helper on first tap/click anywhere
         async function initAndUnlockAudio() {
             try {
@@ -135,7 +161,7 @@
                 
                 const ctx = window.globalAudio;
                 if (ctx.state === 'suspended') {
-                    ctx.resume();
+                    await ctx.resume();
                 }
                 
                 // Play a tiny silent buffer to warm up/unlock the audio system
@@ -150,6 +176,10 @@
 
             // Lock screen from sleeping/dimming
             await requestScreenWakeLock();
+
+            // Remove banner if it exists
+            const banner = document.getElementById('audio-unlock-banner');
+            if (banner) banner.remove();
         }
 
         window.addEventListener('click', initAndUnlockAudio);
@@ -166,9 +196,10 @@
                 
                 const ctx = window.globalAudio;
                 
-                // If context is suspended, try to resume it
+                // If context is suspended, show banner and skip playing sound
                 if (ctx.state === 'suspended') {
-                    ctx.resume();
+                    window.showAudioBanner();
+                    return;
                 }
                 
                 const now = ctx.currentTime;
@@ -224,6 +255,19 @@
                 for (let key in data) {
                     if (data[key] && !['paid', 'canceled_cleared'].includes(data[key].status)) {
                         activeOrders[key] = data[key];
+                    }
+                }
+                
+                // Check audio state on first fetch to show banner if blocked
+                if (isFirstActiveOrdersFetch) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        if (!window.globalAudio) {
+                            window.globalAudio = new AudioContext();
+                        }
+                        if (window.globalAudio.state === 'suspended') {
+                            window.showAudioBanner();
+                        }
                     }
                 }
                 
