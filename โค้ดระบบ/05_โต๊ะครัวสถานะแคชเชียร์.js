@@ -385,6 +385,13 @@
                 source.buffer = buffer;
                 source.connect(ctx.destination);
                 source.start(0);
+                
+                // Warm up/unlock Speech Synthesis synchronously in user gesture
+                if ('speechSynthesis' in window) {
+                    const silentUtterance = new SpeechSynthesisUtterance(' ');
+                    silentUtterance.volume = 0;
+                    window.speechSynthesis.speak(silentUtterance);
+                }
             } catch(e) {
                 console.error("Failed to unlock audio:", e);
             }
@@ -437,6 +444,16 @@
                     window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'th-TH';
+                    
+                    // Explicitly find and select Thai voice
+                    if (window.speechSynthesis.getVoices) {
+                        const voices = window.speechSynthesis.getVoices();
+                        const thVoice = voices.find(v => v.lang === 'th-TH' || v.lang.startsWith('th-') || v.lang.startsWith('th'));
+                        if (thVoice) {
+                            utterance.voice = thVoice;
+                        }
+                    }
+                    
                     utterance.rate = 0.95; // Slightly slower speed for clearer voice and less jitter
                     utterance.pitch = 1.0;
                     utterance.volume = 1.0; // Force maximum volume in SpeechSynthesis
@@ -446,6 +463,16 @@
                 console.error("Speech synthesis error:", e);
             }
         };
+
+        // Warm up and trigger voice loading on script load
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.getVoices();
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = () => {
+                    window.speechSynthesis.getVoices();
+                };
+            }
+        }
 
         window.playNotificationSound = function() {
             try {
@@ -558,7 +585,7 @@
                 return item.Category.split('/')[0].trim();
             }).filter(Boolean))];
             
-            bar.innerHTML = categories.map(cat => {
+            let buttonsHtml = categories.map(cat => {
                 const isActive = currentKitchenFilters.includes(cat);
                 const activeClass = "bg-teal-700 text-white border-teal-700 font-bold shadow-sm";
                 const inactiveClass = "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 font-medium";
@@ -566,6 +593,11 @@
                 
                 return `<button onclick="toggleKitchenCategory('${cat}')" class="px-4 py-1.5 rounded-full border text-xs whitespace-nowrap active:scale-95 transition-all cursor-pointer ${currentClass}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`;
             }).join('');
+            
+            // Add a test sound button at the end
+            buttonsHtml += `<button onclick="window.playNotificationSound()" class="px-4 py-1.5 rounded-full border text-xs bg-amber-500 text-white border-amber-500 hover:bg-amber-600 active:scale-95 font-bold shadow-sm flex items-center gap-1 cursor-pointer ml-auto"><i class="fa-solid fa-bullhorn"></i> ทดสอบเสียง</button>`;
+            
+            bar.innerHTML = buttonsHtml;
         }
 
         function renderKitchen() { 
