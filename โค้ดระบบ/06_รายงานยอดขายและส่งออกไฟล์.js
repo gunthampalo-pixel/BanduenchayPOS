@@ -503,4 +503,4 @@
             });
         };
  
-        fetchInitialData();
+        window.initialDataPromise = fetchInitialData();

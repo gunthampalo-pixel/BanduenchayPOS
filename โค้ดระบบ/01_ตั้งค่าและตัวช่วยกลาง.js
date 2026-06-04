@@ -55,7 +55,16 @@
         let allMenu = []; let allMenuRaw = {}; 
         let globalOptions = []; let globalOptionsRaw = {};
         let allTables = []; 
-        let staffData = {}; let cart = []; let currentUser = null; 
+        let staffData = {}; let cart = [];
+        let currentUser = (function() {
+            try {
+                const saved = localStorage.getItem('bdc_current_user');
+                return saved ? JSON.parse(saved) : null;
+            } catch (e) {
+                console.error("localStorage current user parse error:", e);
+                return null;
+            }
+        })(); 
         let activeOrders = {}; let pollingInterval = null; let currentSelectingItem = null; let currentCheckoutKey = null; 
         window.currentPaidOrders = [];
         let appSettings = {

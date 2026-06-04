@@ -6,7 +6,7 @@
         function closeTableModal() { document.getElementById('tableModal').classList.add('hidden'); }
         function handleTableClick(tbl, status, orderKey) { document.getElementById('actionTableTitle').innerText = `โต๊ะ ${tbl}`; const btnContainer = document.getElementById('tableActionButtons'); let html = ""; if(status === 'available') { html = `<button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-utensils mr-2"></i> เปิดโต๊ะสั่งอาหาร</button><button onclick="bookTableOnly('${tbl}')" class="w-full bg-yellow-400 text-yellow-900 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-calendar-plus mr-2"></i> จองโต๊ะ (ยังไม่สั่งอาหาร)</button>`; } else if (status === 'booked') { html = `<p class="text-sm text-yellow-600 mb-3 font-bold text-center">โต๊ะนี้ถูกจองไว้แล้ว</p><button onclick="convertBookingToActive('${tbl}', '${orderKey}')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-bell-concierge mr-2"></i> ลูกค้ามาแล้ว (เปิดโต๊ะรับออเดอร์)</button><button onclick="cancelBooking('${orderKey}')" class="w-full bg-red-100 text-red-600 py-3.5 rounded-xl font-bold border border-red-300 active:scale-95 mt-3"><i class="fa-solid fa-ban mr-2"></i> ยกเลิกการจอง</button>`; } else if (status === 'occupied') { html = `<p class="text-sm text-red-600 mb-3 font-bold text-center">โต๊ะนี้มีลูกค้ากำลังทานอยู่</p><button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-plus mr-2"></i> สั่งอาหารเพิ่ม</button><button onclick="cancelActiveOrder('${orderKey}')" class="w-full bg-red-50 text-red-500 border border-red-200 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-trash-can mr-2"></i> ยกเลิกบิลนี้ (ทิ้งออเดอร์)</button>`; } btnContainer.innerHTML = html; document.getElementById('tableActionModal').classList.remove('hidden'); }
         function setTableForOrder(tbl, type) { document.getElementById('tableNo').value = tbl; document.getElementById('orderType').value = type; document.getElementById('tableActionModal').classList.add('hidden'); closeTableModal(); }
-        async function bookTableOnly(tbl) { document.getElementById('tableActionModal').classList.add('hidden'); const newBooking = { orderId: "RES-" + Date.now().toString().slice(-5), tableNo: tbl, orderType: "Booking", staffName: currentUser.Name, timestamp: new Date().toISOString(), status: "booked", totalAmount: 0, items: [] }; try { await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newBooking) }); alert(`📌 จองโต๊ะ ${tbl} เรียบร้อยแล้ว`); logActivity('NEW_ORDER', `จองโต๊ะล่วงหน้า: ${tbl}`); openTableModal(); } catch (e) {} }
+        async function bookTableOnly(tbl) { document.getElementById('tableActionModal').classList.add('hidden'); const newBooking = { orderId: "RES-" + Date.now().toString().slice(-5), tableNo: tbl, orderType: "Booking", staffName: currentUser?.Name || 'System', timestamp: new Date().toISOString(), status: "booked", totalAmount: 0, items: [] }; try { await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newBooking) }); alert(`📌 จองโต๊ะ ${tbl} เรียบร้อยแล้ว`); logActivity('NEW_ORDER', `จองโต๊ะล่วงหน้า: ${tbl}`); openTableModal(); } catch (e) {} }
         window.cancelBooking = function(orderKey) { showModal('confirm', 'ยกเลิกการจอง', 'ยืนยันการยกเลิกการจองโต๊ะนี้ใช่หรือไม่?', async () => { document.getElementById('tableActionModal').classList.add('hidden'); try { const tbl = activeOrders[orderKey].tableNo; delete activeOrders[orderKey]; renderTableMap(); await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'DELETE' }); logActivity('CANCEL_ORDER', `ยกเลิกการจองโต๊ะ: ${tbl}`); } catch (e) {} }); };
         window.convertBookingToActive = async function(tbl, orderKey) { document.getElementById('tableActionModal').classList.add('hidden'); try { await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'DELETE' }); delete activeOrders[orderKey]; setTableForOrder(tbl, "Dine-in"); } catch (e) {} };
         window.cancelActiveOrder = function(orderKey) { showModal('confirm', 'ยกเลิกบิล', "⚠️ ยืนยันการ 'ยกเลิกบิล' โต๊ะนี้ใช่หรือไม่?\n(ข้อมูลจะไม่ถูกนำไปคิดยอดขาย)", async () => { document.getElementById('tableActionModal').classList.add('hidden'); if(activeOrders[orderKey]) { const tbl = activeOrders[orderKey].tableNo; activeOrders[orderKey].status = 'canceled'; renderTableMap(); try { await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'PATCH', body: JSON.stringify({ status: 'canceled' }) }); logActivity('CANCEL_ORDER', `ทิ้งออเดอร์ (ยกเลิกบิล) จากผังโต๊ะ: ${tbl}`); fetchActiveOrders(); } catch (e) {} } }); };
@@ -77,7 +77,7 @@
             btn.disabled = true; 
             btn.innerHTML = "⏳ กำลังส่งเข้าครัว..."; 
             const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0); 
-            const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser.Name, timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; 
+            const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser?.Name || 'System', timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; 
             try { 
                 await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); 
                 alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); 
@@ -95,7 +95,87 @@
             } 
         }
 
-        async function fetchActiveOrders() { try { const res = await fetch(`${FIREBASE_URL}ActiveOrders.json`); const data = await res.json() || {}; activeOrders = {}; for(let key in data) { if(data[key] && !['paid', 'canceled_cleared'].includes(data[key].status)) { activeOrders[key] = data[key]; } } renderKitchen(); renderStatus(); renderCashier(); } catch (e) {} }
+        let isFirstActiveOrdersFetch = true;
+
+        window.playNotificationSound = function() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const now = ctx.currentTime;
+                
+                // Tone 1: C5 (523.25 Hz)
+                const osc1 = ctx.createOscillator();
+                const gain1 = ctx.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(523.25, now);
+                gain1.gain.setValueAtTime(0.15, now);
+                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+                osc1.connect(gain1);
+                gain1.connect(ctx.destination);
+                osc1.start(now);
+                osc1.stop(now + 0.3);
+                
+                // Tone 2: E5 (659.25 Hz)
+                const osc2 = ctx.createOscillator();
+                const gain2 = ctx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(659.25, now + 0.12);
+                gain2.gain.setValueAtTime(0.15, now + 0.12);
+                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                osc2.connect(gain2);
+                gain2.connect(ctx.destination);
+                osc2.start(now + 0.12);
+                osc2.stop(now + 0.5);
+            } catch (e) {
+                console.error("Audio play error:", e);
+            }
+        };
+
+        async function fetchActiveOrders() {
+            try {
+                const res = await fetch(`${FIREBASE_URL}ActiveOrders.json`);
+                const data = await res.json() || {};
+                
+                // Detect new orders
+                let hasNewOrder = false;
+                if (!isFirstActiveOrdersFetch) {
+                    for (let key in data) {
+                        if (data[key] && !['paid', 'canceled_cleared', 'booked'].includes(data[key].status)) {
+                            // Check if it's a completely new order that we haven't seen in activeOrders
+                            if (!activeOrders[key]) {
+                                hasNewOrder = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                activeOrders = {};
+                for (let key in data) {
+                    if (data[key] && !['paid', 'canceled_cleared'].includes(data[key].status)) {
+                        activeOrders[key] = data[key];
+                    }
+                }
+                
+                isFirstActiveOrdersFetch = false;
+                
+                // Play notification sound if new order detected and current page is kitchen or cashier or status
+                if (hasNewOrder) {
+                    const currentPageEl = document.querySelector('.page-content:not(.hidden)');
+                    const currentPageId = currentPageEl ? currentPageEl.id : '';
+                    if (['page-kitchen', 'page-cashier', 'page-status'].includes(currentPageId)) {
+                        window.playNotificationSound();
+                    }
+                }
+                
+                renderKitchen();
+                renderStatus();
+                renderCashier();
+            } catch (e) {
+                console.error("Error fetching active orders:", e);
+            }
+        }
         let currentKitchenFilters = [];
         try {
             currentKitchenFilters = JSON.parse(localStorage.getItem('currentKitchenFilters')) || ['All'];
@@ -148,10 +228,10 @@
             
             renderKitchenCategories();
             
-            let p = currentUser.Permissions || {};
-            const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin');
-            const isBar = (currentUser.Role || "").toLowerCase().includes('bar') || (currentUser.Role || "").toLowerCase().includes('บาร์');
-            const isKitchen = (currentUser.Role || "").toLowerCase().includes('kitchen') || (currentUser.Role || "").toLowerCase().includes('ครัว');
+            let p = currentUser?.Permissions || {};
+            const isAdmin = p.admin || (currentUser?.Role || "").toLowerCase().includes('admin');
+            const isBar = (currentUser?.Role || "").toLowerCase().includes('bar') || (currentUser?.Role || "").toLowerCase().includes('บาร์');
+            const isKitchen = (currentUser?.Role || "").toLowerCase().includes('kitchen') || (currentUser?.Role || "").toLowerCase().includes('ครัว');
             
             for(let key in activeOrders) { 
                 const order = activeOrders[key]; 
@@ -311,7 +391,6 @@
                     cashierName: currentUser?.Name || order.staffName || '-'
                 };
 
-                const receiptWindow = window.open('', '_blank', 'width=420,height=720');
                 delete activeOrders[keyToUpdate];
                 currentCheckoutKey = null;
                 document.getElementById('qrModal').classList.add('hidden');
@@ -320,8 +399,7 @@
                 await fetch(`${FIREBASE_URL}OrderHistory/${dateKey}/${paidOrder.orderId}.json`, { method: 'PUT', body: JSON.stringify(paidOrder) });
                 await fetch(`${FIREBASE_URL}ActiveOrders/${keyToUpdate}.json`, { method: 'DELETE' });
                 logActivity('PAYMENT', `รับชำระเงิน โต๊ะ ${order.tableNo} ยอดสุทธิ ฿${paidOrder.totalAmount.toLocaleString()}${discount.amount ? ` (ลด ฿${discount.amount.toLocaleString()}: ${discount.reason})` : ''} ด้วย ${method}`);
-                printReceipt(paidOrder, receiptWindow);
-                alert('💰 รับชำระเงินเรียบร้อยแล้ว! เปิดใบเสร็จให้แล้ว');
+                alert('💰 รับชำระเงินเรียบร้อยแล้ว!');
             } catch (e) {
                 alert('❌ เกิดข้อผิดพลาดตอนรับชำระเงิน');
             }
@@ -593,10 +671,10 @@
             if (!order || !order.items) return;
 
             // ตรวจสอบตัวกรองและบทบาทเพื่อเลือกเฉพาะเมนูที่แสดงอยู่บนเครื่องครัวนี้
-            let p = currentUser.Permissions || {};
-            const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin');
-            const isBar = (currentUser.Role || "").toLowerCase().includes('bar') || (currentUser.Role || "").toLowerCase().includes('บาร์');
-            const isKitchen = (currentUser.Role || "").toLowerCase().includes('kitchen') || (currentUser.Role || "").toLowerCase().includes('ครัว');
+            let p = currentUser?.Permissions || {};
+            const isAdmin = p.admin || (currentUser?.Role || "").toLowerCase().includes('admin');
+            const isBar = (currentUser?.Role || "").toLowerCase().includes('bar') || (currentUser?.Role || "").toLowerCase().includes('บาร์');
+            const isKitchen = (currentUser?.Role || "").toLowerCase().includes('kitchen') || (currentUser?.Role || "").toLowerCase().includes('ครัว');
 
             let visibleIndices = [];
             let pendingIndices = [];
