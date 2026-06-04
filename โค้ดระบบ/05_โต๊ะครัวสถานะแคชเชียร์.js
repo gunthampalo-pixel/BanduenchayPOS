@@ -4,7 +4,158 @@
         async function openTableModal() { await fetchActiveOrders(); renderTableMap(); document.getElementById('tableModal').classList.remove('hidden'); }
         function renderTableMap() { const grid = document.getElementById('tableMapGrid'); let html = ""; if(allTables.length === 0) { grid.innerHTML = '<p class="text-center col-span-3 text-gray-400 py-4">ยังไม่มีโต๊ะในระบบ กรุณาเพิ่มโต๊ะในเมนู "จัดการผังโต๊ะ"</p>'; return; } allTables.forEach(tbl => { let status = "available"; let bgColor = "bg-green-50 border-green-300 text-green-700"; let icon = "fa-check"; let orderKey = null; for(let key in activeOrders) { const order = activeOrders[key]; if(order.tableNo === tbl && !['paid', 'canceled', 'canceled_cleared'].includes(order.status)) { orderKey = key; if(order.status === 'booked') { status = "booked"; bgColor = "bg-yellow-50 border-yellow-400 text-yellow-700 shadow-md"; icon = "fa-calendar-check"; } else { status = "occupied"; bgColor = "bg-red-50 border-red-400 text-red-700 shadow-md"; icon = "fa-users"; } break; } } html += `<button onclick="handleTableClick('${tbl}', '${status}', '${orderKey}')" class="table-btn p-3 rounded-2xl border-2 flex flex-col items-center justify-center gap-1 ${bgColor}"><i class="fa-solid ${icon} text-xl mb-1"></i><span class="font-bold">${tbl}</span></button>`; }); grid.innerHTML = html; }
         function closeTableModal() { document.getElementById('tableModal').classList.add('hidden'); }
-        function handleTableClick(tbl, status, orderKey) { document.getElementById('actionTableTitle').innerText = `โต๊ะ ${tbl}`; const btnContainer = document.getElementById('tableActionButtons'); let html = ""; if(status === 'available') { html = `<button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-utensils mr-2"></i> เปิดโต๊ะสั่งอาหาร</button><button onclick="bookTableOnly('${tbl}')" class="w-full bg-yellow-400 text-yellow-900 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-calendar-plus mr-2"></i> จองโต๊ะ (ยังไม่สั่งอาหาร)</button>`; } else if (status === 'booked') { html = `<p class="text-sm text-yellow-600 mb-3 font-bold text-center">โต๊ะนี้ถูกจองไว้แล้ว</p><button onclick="convertBookingToActive('${tbl}', '${orderKey}')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-bell-concierge mr-2"></i> ลูกค้ามาแล้ว (เปิดโต๊ะรับออเดอร์)</button><button onclick="cancelBooking('${orderKey}')" class="w-full bg-red-100 text-red-600 py-3.5 rounded-xl font-bold border border-red-300 active:scale-95 mt-3"><i class="fa-solid fa-ban mr-2"></i> ยกเลิกการจอง</button>`; } else if (status === 'occupied') { html = `<p class="text-sm text-red-600 mb-3 font-bold text-center">โต๊ะนี้มีลูกค้ากำลังทานอยู่</p><button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-plus mr-2"></i> สั่งอาหารเพิ่ม</button><button onclick="cancelActiveOrder('${orderKey}')" class="w-full bg-red-50 text-red-500 border border-red-200 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-trash-can mr-2"></i> ยกเลิกบิลนี้ (ทิ้งออเดอร์)</button>`; } btnContainer.innerHTML = html; document.getElementById('tableActionModal').classList.remove('hidden'); }
+        function handleTableClick(tbl, status, orderKey) { 
+            document.getElementById('actionTableTitle').innerText = `โต๊ะ ${tbl}`; 
+            const btnContainer = document.getElementById('tableActionButtons'); 
+            let html = ""; 
+            if(status === 'available') { 
+                html = `<button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-utensils mr-2"></i> เปิดโต๊ะสั่งอาหาร</button><button onclick="bookTableOnly('${tbl}')" class="w-full bg-yellow-400 text-yellow-900 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-calendar-plus mr-2"></i> จองโต๊ะ (ยังไม่สั่งอาหาร)</button>`; 
+            } else if (status === 'booked') { 
+                html = `<p class="text-sm text-yellow-600 mb-3 font-bold text-center">โต๊ะนี้ถูกจองไว้แล้ว</p>
+                        <button onclick="convertBookingToActive('${tbl}', '${orderKey}')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-bell-concierge mr-2"></i> ลูกค้ามาแล้ว (เปิดโต๊ะรับออเดอร์)</button>
+                        <button onclick="openMoveTableModal('${orderKey}', '${tbl}')" class="w-full bg-slate-100 text-slate-700 py-3.5 rounded-xl font-bold border border-slate-300 active:scale-95 mt-3"><i class="fa-solid fa-arrows-spin mr-2"></i> ย้ายโต๊ะจอง</button>
+                        <button onclick="cancelBooking('${orderKey}')" class="w-full bg-red-100 text-red-600 py-3.5 rounded-xl font-bold border border-red-300 active:scale-95 mt-3"><i class="fa-solid fa-ban mr-2"></i> ยกเลิกการจอง</button>`; 
+            } else if (status === 'occupied') { 
+                html = `<p class="text-sm text-red-600 mb-3 font-bold text-center">โต๊ะนี้มีลูกค้ากำลังทานอยู่</p>
+                        <button onclick="setTableForOrder('${tbl}', 'Dine-in')" class="w-full bg-blue-100 text-blue-700 border border-blue-300 py-3.5 rounded-xl font-bold shadow active:scale-95"><i class="fa-solid fa-plus mr-2"></i> สั่งอาหารเพิ่ม</button>
+                        <button onclick="openMoveTableModal('${orderKey}', '${tbl}')" class="w-full bg-orange-50 text-orange-700 border border-orange-200 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-arrows-spin mr-2"></i> ย้ายโต๊ะ / รวมบิล</button>
+                        <button onclick="cancelActiveOrder('${orderKey}')" class="w-full bg-red-50 text-red-500 border border-red-200 py-3.5 rounded-xl font-bold shadow active:scale-95 mt-3"><i class="fa-solid fa-trash-can mr-2"></i> ยกเลิกบิลนี้ (ทิ้งออเดอร์)</button>`; 
+            } 
+            btnContainer.innerHTML = html; 
+            document.getElementById('tableActionModal').classList.remove('hidden'); 
+        }
+
+        window.moveTableSourceKey = null;
+        window.moveTableSourceTable = null;
+
+        window.openMoveTableModal = function(orderKey, currentTable) {
+            window.moveTableSourceKey = orderKey;
+            window.moveTableSourceTable = currentTable;
+            document.getElementById('moveTableFromLabel').innerText = `โต๊ะ ${currentTable}`;
+            
+            const grid = document.getElementById('moveTableGrid');
+            if (!grid) return;
+            
+            let html = "";
+            allTables.forEach(tbl => {
+                if (tbl === currentTable) return;
+                
+                let isOccupied = false;
+                let targetKey = "";
+                let statusLabel = "ว่าง";
+                let btnClass = "bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:border-green-300";
+                
+                for (let key in activeOrders) {
+                    const order = activeOrders[key];
+                    if (order.tableNo === tbl && !['paid', 'canceled', 'canceled_cleared'].includes(order.status)) {
+                        targetKey = key;
+                        isOccupied = true;
+                        if (order.status === 'booked') {
+                            statusLabel = "จอง";
+                            btnClass = "bg-yellow-50 border-yellow-300 text-yellow-800 hover:bg-yellow-100";
+                        } else {
+                            statusLabel = "มีลูกค้า";
+                            btnClass = "bg-red-50 border-red-200 text-red-700 hover:bg-red-100";
+                        }
+                        break;
+                    }
+                }
+                
+                html += `<button type="button" onclick="confirmMoveTable('${tbl}', '${targetKey}')" class="p-3.5 border-2 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all outline-none ${btnClass}">
+                    <span class="font-bold text-sm">${tbl}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-white/70 font-semibold border">${statusLabel}</span>
+                </button>`;
+            });
+            
+            grid.innerHTML = html;
+            document.getElementById('tableActionModal').classList.add('hidden');
+            document.getElementById('moveTableModal').classList.remove('hidden');
+        };
+
+        window.confirmMoveTable = function(targetTable, targetKey) {
+            const sourceTable = window.moveTableSourceTable;
+            const sourceKey = window.moveTableSourceKey;
+            if (!sourceKey || !sourceTable) return;
+            
+            if (!targetKey || targetKey === 'null' || targetKey === '') {
+                // ย้ายไปยังโต๊ะว่าง
+                showModal('confirm', 'ย้ายโต๊ะ', `ยืนยันการย้ายรายการจาก "โต๊ะ ${sourceTable}" ไปยัง "โต๊ะ ${targetTable}" ใช่หรือไม่?`, async () => {
+                    try {
+                        document.getElementById('moveTableModal').classList.add('hidden');
+                        
+                        // อัปเดตใน Firebase
+                        await fetch(`${FIREBASE_URL}ActiveOrders/${sourceKey}.json`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ tableNo: targetTable })
+                        });
+                        
+                        logActivity('MOVE_TABLE', `ย้ายโต๊ะจาก ${sourceTable} ไป ${targetTable}`);
+                        alert(`🔄 ย้ายโต๊ะจาก ${sourceTable} ไป ${targetTable} สำเร็จ!`);
+                        fetchActiveOrders();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการย้ายโต๊ะ");
+                    }
+                });
+            } else {
+                // รวมบิลกับโต๊ะปลายทางที่มีลูกค้าอยู่แล้ว
+                const targetOrder = activeOrders[targetKey];
+                const sourceOrder = activeOrders[sourceKey];
+                if (!targetOrder || !sourceOrder) return;
+                
+                const targetLabel = targetOrder.status === 'booked' ? `โต๊ะจอง ${targetTable}` : `โต๊ะ ${targetTable}`;
+                
+                showModal('confirm', 'รวมบิล / รวมโต๊ะ', `⚠️ "โต๊ะ ${targetTable}" มีบิลค้างอยู่ในระบบแล้ว\nต้องการย้ายรายการทั้งหมดของ "โต๊ะ ${sourceTable}" ไปรวมบิลเข้ากับ "${targetLabel}" ใช่หรือไม่?\n(ออเดอร์โต๊ะ ${sourceTable} จะถูกลบและควบรวมทันที)`, async () => {
+                    try {
+                        document.getElementById('moveTableModal').classList.add('hidden');
+                        
+                        const sourceItems = sourceOrder.items || [];
+                        const targetItems = targetOrder.items || [];
+                        
+                        // เอาไอเทมมารวมกัน
+                        const mergedItems = [...targetItems, ...sourceItems.map(item => ({
+                            ...item,
+                            itemStatus: item.itemStatus || 'pending'
+                        }))];
+                        
+                        const mergedTotalAmount = mergedItems
+                            .filter(i => i.itemStatus !== 'canceled')
+                            .reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
+                        
+                        // คำนวณสถานะใหม่ของโต๊ะปลายทาง
+                        const activeItems = mergedItems.filter(i => i.itemStatus !== 'canceled');
+                        const allDoneGlobal = activeItems.length > 0 && activeItems.every(i => i.itemStatus === 'done');
+                        const anyDoneGlobal = activeItems.some(i => i.itemStatus === 'done' || i.itemStatus === 'cooking');
+                        let mergedStatus = 'pending';
+                        if (allDoneGlobal) {
+                            mergedStatus = 'done';
+                        } else if (anyDoneGlobal) {
+                            mergedStatus = 'cooking';
+                        }
+                        
+                        // 1. อัปเดตข้อมูลรวมในโต๊ะปลายทาง
+                        await fetch(`${FIREBASE_URL}ActiveOrders/${targetKey}.json`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({
+                                items: mergedItems,
+                                totalAmount: mergedTotalAmount,
+                                status: mergedStatus
+                            })
+                        });
+                        
+                        // 2. ลบโต๊ะต้นทางออก
+                        await fetch(`${FIREBASE_URL}ActiveOrders/${sourceKey}.json`, {
+                            method: 'DELETE'
+                        });
+                        
+                        logActivity('MOVE_TABLE', `ย้ายและรวมบิลจาก ${sourceTable} ไปยัง ${targetTable}`);
+                        alert(`✅ รวมบิลจาก ${sourceTable} เข้ากับ ${targetTable} เรียบร้อยแล้ว!`);
+                        fetchActiveOrders();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการรวมบิล");
+                    }
+                });
+            }
+        };
         function setTableForOrder(tbl, type) { document.getElementById('tableNo').value = tbl; document.getElementById('orderType').value = type; document.getElementById('tableActionModal').classList.add('hidden'); closeTableModal(); }
         async function bookTableOnly(tbl) { document.getElementById('tableActionModal').classList.add('hidden'); const newBooking = { orderId: "RES-" + Date.now().toString().slice(-5), tableNo: tbl, orderType: "Booking", staffName: currentUser?.Name || 'System', timestamp: new Date().toISOString(), status: "booked", totalAmount: 0, items: [] }; try { await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newBooking) }); alert(`📌 จองโต๊ะ ${tbl} เรียบร้อยแล้ว`); logActivity('NEW_ORDER', `จองโต๊ะล่วงหน้า: ${tbl}`); openTableModal(); } catch (e) {} }
         window.cancelBooking = function(orderKey) { showModal('confirm', 'ยกเลิกการจอง', 'ยืนยันการยกเลิกการจองโต๊ะนี้ใช่หรือไม่?', async () => { document.getElementById('tableActionModal').classList.add('hidden'); try { const tbl = activeOrders[orderKey].tableNo; delete activeOrders[orderKey]; renderTableMap(); await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'DELETE' }); logActivity('CANCEL_ORDER', `ยกเลิกการจองโต๊ะ: ${tbl}`); } catch (e) {} }); };
