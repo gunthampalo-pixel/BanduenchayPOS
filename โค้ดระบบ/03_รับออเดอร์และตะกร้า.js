@@ -149,18 +149,30 @@
 
                     let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
                     
-                    return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer animate-fade-in active:scale-95 transition-all" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
+                    return `<div class="menu-card bg-white p-2.5 sm:p-2 rounded-xl shadow-sm border border-gray-100 flex flex-row sm:flex-col items-center sm:items-stretch cursor-pointer animate-fade-in active:scale-95 transition-all gap-3 sm:gap-0" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                        <div class="w-14 h-14 sm:w-full sm:aspect-square bg-gray-100 rounded-lg sm:mb-2 overflow-hidden relative shrink-0">
+                            <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'">
+                            <div class="hidden sm:block absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div>
+                        </div>
+                        <div class="flex-1 min-w-0 sm:contents flex flex-col justify-between py-0.5">
+                            <p class="font-bold sm:font-semibold text-slate-800 text-sm sm:text-xs sm:px-1 sm:line-clamp-2 truncate">${item.Name}</p>
+                            ${hasOpt ? '<span class="text-[10px] sm:text-[9px] text-gray-400 sm:px-1 mt-0.5 sm:mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}
+                            <p class="sm:hidden font-bold text-teal-700 text-sm mt-0.5">฿${displayPrice}</p>
+                        </div>
+                    </div>`; 
                 }).join('');
             }
 
             // เพิ่มการ์ด "เมนูกันเหนียว (กำหนดเอง)" ต่อท้ายลิสต์เสมอ เพื่อให้ใช้ได้ทุกเมื่อ
             const customCardHtml = `
-            <div class="menu-card bg-gradient-to-br from-teal-50 to-emerald-50 p-2 rounded-xl shadow-sm border border-teal-200 flex flex-col cursor-pointer animate-fade-in active:scale-95 transition-all" onclick="window.openCustomItemModal()">
-                <div class="aspect-square bg-teal-100/50 rounded-lg mb-2 overflow-hidden flex flex-col items-center justify-center text-teal-600 text-2xl">
+            <div class="menu-card bg-gradient-to-br from-teal-50 to-emerald-50 p-2.5 sm:p-2 rounded-xl shadow-sm border border-teal-200 flex flex-row sm:flex-col items-center sm:items-stretch cursor-pointer animate-fade-in active:scale-95 transition-all gap-3 sm:gap-0" onclick="window.openCustomItemModal()">
+                <div class="w-14 h-14 sm:w-full sm:aspect-square bg-teal-100/50 rounded-lg sm:mb-2 overflow-hidden flex flex-col items-center justify-center text-teal-600 text-2xl shrink-0">
                     <i class="fa-solid fa-circle-plus"></i>
                 </div>
-                <p class="font-bold text-teal-800 text-xs px-1 line-clamp-2">เมนูกันเหนียว</p>
-                <span class="text-[9px] text-teal-600 px-1 mt-1 font-semibold"><i class="fa-solid fa-keyboard"></i> พิมพ์ชื่อ/ราคาเอง</span>
+                <div class="flex-1 min-w-0 sm:contents flex flex-col justify-between py-0.5">
+                    <p class="font-bold text-teal-800 text-sm sm:text-xs sm:px-1 sm:line-clamp-2 truncate">เมนูกันเหนียว</p>
+                    <span class="text-[10px] sm:text-[9px] text-teal-600 sm:px-1 mt-0.5 sm:mt-1 font-semibold"><i class="fa-solid fa-keyboard"></i> กำหนดเอง</span>
+                </div>
             </div>`;
 
             grid.innerHTML = itemsHtml + customCardHtml; 
@@ -193,6 +205,12 @@
         function renderSearchSuggestions(q) {
             const sugBox = document.getElementById('menuSearchSuggestions');
             if(!sugBox) return;
+            
+            // ซ่อนหรือปิดการทำงานกล่องช่วยพิมพ์บนจอมือถือเพื่อหลีกเลี่ยงการบดบังเมนูหลัก
+            if (window.innerWidth < 768) {
+                sugBox.classList.add('hidden');
+                return;
+            }
             
             const query = q.toLowerCase().trim();
             if(!query) {

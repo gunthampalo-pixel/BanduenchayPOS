@@ -72,27 +72,26 @@
     <!-- ========================================== -->
     <div id="page-order" class="page-content pb-36 hidden">
         <div class="bg-white p-4 shadow-sm sticky top-[56px] z-20">
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                    <label class="text-xs text-gray-500 ml-1">ประเภทบิล</label>
-                    <select id="orderType" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="Dine-in">ทานที่ร้าน</option>
-                        <option value="Takeaway">สั่งกลับบ้าน</option>
-                        <option value="Delivery">เดลิเวอรี่</option>
+            <!-- 📍 ส่วนหัวควบคุมออเดอร์ (Compact Order Control Row) -->
+            <div class="flex flex-row items-center gap-2 mb-2">
+                <!-- ประเภทบิล (Bill Type Select) -->
+                <div class="w-2/5 sm:w-1/4 max-w-[140px]">
+                    <select id="orderType" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+                        <option value="Dine-in">📍 ทานร้าน</option>
+                        <option value="Takeaway">🛍️ กลับบ้าน</option>
+                        <option value="Delivery">🛵 ส่งของ</option>
                     </select>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-500 ml-1 flex justify-between">
-                        <span>โต๊ะ / ชื่อลูกค้า</span>
-                        <button onclick="openTableModal()" class="text-blue-500 font-bold"><i class="fa-solid fa-map"></i> ผังโต๊ะ</button>
-                    </label>
-                    <div class="flex gap-1">
-                        <input type="text" id="tableNo" placeholder="เช่น A1, พี่หนุ่ม" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+                <!-- โต๊ะ / ชื่อลูกค้า (Table / Customer Input with Embedded Map Button) -->
+                <div class="flex-1 relative">
+                    <input type="text" id="tableNo" placeholder="เลขโต๊ะ / ลูกค้า" class="w-full p-2 pr-9 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button onclick="openTableModal()" class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors" title="ผังโต๊ะ">
+                        <i class="fa-solid fa-map-location-dot text-base"></i>
+                    </button>
                 </div>
             </div>
             <!-- 🔍 ช่องค้นหาอัจฉริยะ (Smart Menu Search Bar) -->
-            <div class="relative mb-3">
+            <div class="relative mb-2">
                 <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 <input type="text" id="menuSearchInput" oninput="searchMenu()" placeholder="ค้นหาเมนูอาหาร/เครื่องดื่ม... (พิมพ์ กาแฟ, ข้าว)" class="w-full pl-10 pr-10 p-2.5 rounded-xl border bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 <button id="clearMenuSearchBtn" onclick="clearMenuSearch()" class="hidden absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold w-6 h-6 flex items-center justify-center rounded-full bg-gray-200/50">✕</button>
@@ -1057,11 +1056,11 @@
     <!-- ========================================== -->
     <!-- Scripts & Logic -->
     <!-- ========================================== -->
-    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.9"></script>
-    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.9"></script>
-    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.9"></script>
-    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.9"></script>
-    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.9"></script>
-    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.9"></script>
+    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.10"></script>
 </body>
 </html>

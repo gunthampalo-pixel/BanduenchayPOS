@@ -214,6 +214,29 @@
             #cashier-container { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
         }
 
+        @media (max-width: 767px) {
+            #global-header {
+                position: relative !important;
+            }
+            .page-content > div:first-child,
+            #page-order > div:first-child,
+            #page-status > div:first-child,
+            #page-kitchen > div:first-child,
+            #page-cashier > div:first-child,
+            #page-sales > div:first-child,
+            #page-admin > div:first-child {
+                position: sticky !important;
+                top: 0 !important;
+            }
+        }
+
+        @media (max-width: 639px) {
+            #menu-grid {
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+            }
+        }
+
         @media (max-width: 480px) {
             body { font-size: 14px; }
             #login-screen { padding: 18px !important; }
@@ -222,9 +245,8 @@
             #login-screen h1 { font-size: 28px !important; }
             #global-header { padding: 10px 12px !important; }
             #global-header button { padding: 7px 10px !important; white-space: nowrap; }
-            #page-order > div:first-child { top: 52px !important; padding: 12px !important; }
-            #page-order > div:first-child .grid.grid-cols-2 { grid-template-columns: 1fr !important; gap: 10px !important; }
-            #menu-grid { padding: 12px !important; gap: 10px !important; }
+            #page-order > div:first-child { top: 0px !important; padding: 8px 10px !important; }
+            #menu-grid { padding: 8px !important; gap: 8px !important; }
             .menu-card { border-radius: 14px !important; }
             #cart-bar { bottom: 58px !important; padding: 10px 12px !important; }
             #cart-bar button { padding-left: 18px !important; padding-right: 18px !important; }
@@ -260,7 +282,6 @@
         }
 
         @media (max-width: 360px) {
-            #menu-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
             .nav-item span { max-width: 46px; font-size: 8px !important; }
             #cart-bar button { padding-left: 14px !important; padding-right: 14px !important; }
         }
