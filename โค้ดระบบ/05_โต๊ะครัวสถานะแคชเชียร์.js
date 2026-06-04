@@ -38,8 +38,6 @@
             
             let html = "";
             allTables.forEach(tbl => {
-                if (tbl === currentTable) return;
-                
                 let isOccupied = false;
                 let targetKey = "";
                 let statusLabel = "ว่าง";
@@ -48,6 +46,10 @@
                 for (let key in activeOrders) {
                     const order = activeOrders[key];
                     if (order.tableNo === tbl && !['paid', 'canceled', 'canceled_cleared'].includes(order.status)) {
+                        // For the current table, we only match if it's a different active order!
+                        if (tbl === currentTable && key === orderKey) {
+                            continue;
+                        }
                         targetKey = key;
                         isOccupied = true;
                         if (order.status === 'booked') {
@@ -59,6 +61,11 @@
                         }
                         break;
                     }
+                }
+                
+                // If it is the current table and there is NO OTHER active order for it, skip it
+                if (tbl === currentTable && !isOccupied) {
+                    return;
                 }
                 
                 html += `<button type="button" onclick="confirmMoveTable('${tbl}', '${targetKey}')" class="p-3.5 border-2 rounded-2xl flex flex-col items-center justify-center gap-1 active:scale-95 transition-all outline-none ${btnClass}">
@@ -412,27 +419,36 @@
                 const now = ctx.currentTime;
                 
                 const playBellTone = (freq, startTime, duration) => {
-                    const osc = ctx.createOscillator();
-                    const gainNode = ctx.createGain();
-                    
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, startTime);
-                    
-                    gainNode.gain.setValueAtTime(0, startTime);
-                    // Fast attack, exponential decay for bell sound
-                    gainNode.gain.linearRampToValueAtTime(0.8, startTime + 0.01);
-                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    
-                    osc.connect(gainNode);
-                    gainNode.connect(ctx.destination);
-                    
-                    osc.start(startTime);
-                    osc.stop(startTime + duration + 0.05);
+                    // 1. Fundamental tone - using 'triangle' wave for rich, loud body
+                    const osc1 = ctx.createOscillator();
+                    const gain1 = ctx.createGain();
+                    osc1.type = 'triangle';
+                    osc1.frequency.setValueAtTime(freq, startTime);
+                    gain1.gain.setValueAtTime(0, startTime);
+                    gain1.gain.linearRampToValueAtTime(0.7, startTime + 0.005);
+                    gain1.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    osc1.connect(gain1);
+                    gain1.connect(ctx.destination);
+                    osc1.start(startTime);
+                    osc1.stop(startTime + duration + 0.05);
+
+                    // 2. Bright harmonic overtone - using 'sine' wave for crystal clarity
+                    const osc2 = ctx.createOscillator();
+                    const gain2 = ctx.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(freq * 2, startTime);
+                    gain2.gain.setValueAtTime(0, startTime);
+                    gain2.gain.linearRampToValueAtTime(0.3, startTime + 0.005);
+                    gain2.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.75);
+                    osc2.connect(gain2);
+                    gain2.connect(ctx.destination);
+                    osc2.start(startTime);
+                    osc2.stop(startTime + duration + 0.05);
                 };
                 
                 // Play a loud C-major-ish double chime (A5 and C6)
-                playBellTone(880, now, 0.25);
-                playBellTone(1046.5, now + 0.12, 0.35);
+                playBellTone(880, now, 0.35); // Slightly longer duration for better audibility
+                playBellTone(1046.5, now + 0.15, 0.45);
             } catch (e) {
                 console.error("Failed to play double chime:", e);
             }
@@ -441,7 +457,6 @@
         window.playSpeechNotification = function(text) {
             try {
                 if ('speechSynthesis' in window) {
-                    window.speechSynthesis.cancel();
                     const utterance = new SpeechSynthesisUtterance(text);
                     utterance.lang = 'th-TH';
                     
@@ -454,9 +469,9 @@
                         }
                     }
                     
-                    utterance.rate = 0.95; // Slightly slower speed for clearer voice and less jitter
+                    utterance.rate = 0.95; // Slightly slower speed for clearer voice
                     utterance.pitch = 1.0;
-                    utterance.volume = 1.0; // Force maximum volume in SpeechSynthesis
+                    utterance.volume = 1.0; // Max volume
                     window.speechSynthesis.speak(utterance);
                 }
             } catch (e) {
@@ -494,10 +509,8 @@
                 // Play the loud digital chime first
                 playLoudDoubleChime(ctx);
                 
-                // Speak "ออเดอร์มาแล้ว" after the chime starts to avoid overlapping
-                setTimeout(() => {
-                    window.playSpeechNotification("ออเดอร์มาแล้ว");
-                }, 400);
+                // Speak "ออเดอร์มาแล้ว" synchronously to preserve user-gesture context on iOS/Safari
+                window.playSpeechNotification("ออเดอร์มาแล้ว");
             } catch (e) {
                 console.error("Audio/Speech notification error:", e);
             }
@@ -667,7 +680,33 @@
         function renderStatus() { const container = document.getElementById('status-container'); let html = ""; let count = 0; for(let key in activeOrders) { const order = activeOrders[key]; if(!['paid', 'booked', 'canceled', 'canceled_cleared'].includes(order.status)) { count++; const timeStr = new Date(order.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}); let statusColor = "bg-gray-100 text-gray-600 border-gray-200"; let statusText = "รอดำเนินการ"; let serveBtn = ""; if(order.status === 'pending') { statusText = "🕒 รอคิวทำ"; statusColor = "bg-gray-100 text-gray-600"; } else if(order.status === 'cooking') { statusText = "🔥 กำลังทำ"; statusColor = "bg-orange-100 text-orange-600 border-orange-200"; } else if(order.status === 'done') { statusText = "✅ เสร็จแล้ว (รอเสิร์ฟ)"; statusColor = "bg-green-100 text-green-700 border-green-300 shadow-sm"; serveBtn = `<button onclick="markAsServed('${key}')" class="mt-3 w-full bg-green-500 text-white py-2 rounded-lg font-bold shadow active:scale-95"><i class="fa-solid fa-hand-holding-hand mr-1"></i> กดเมื่อเสิร์ฟครบแล้ว</button>`; } else if(order.status === 'served') { statusText = "🍽️ เสิร์ฟแล้ว"; statusColor = "bg-blue-50 text-blue-500"; } let itemsListHtml = `<div class="mt-3 border-t border-gray-100 pt-3 space-y-2">`; (order.items || []).forEach((item, originalIndex) => { let iStatus = item.itemStatus || 'pending'; if(iStatus === 'canceled') { itemsListHtml += `<div class="flex justify-between items-center bg-red-50 p-2 rounded border border-red-100 opacity-70"><span class="text-sm font-semibold text-red-500"><span class="text-red-500 mr-1">${item.qty}x</span> ${formatItemNameHTML(item.name, true)}</span><span class="text-red-500 text-[10px] font-bold">ยกเลิกแล้ว</span></div>`; return; } let iColor = "text-gray-400"; let iIcon = "fa-clock"; let iLabel = "รอคิว"; if(iStatus === 'cooking') { iColor = "text-orange-500"; iIcon = "fa-fire"; iLabel = "กำลังปรุง"; } else if(iStatus === 'done') { iColor = "text-green-500"; iIcon = "fa-check"; iLabel = "เสร็จแล้ว"; } itemsListHtml += `<div class="flex justify-between items-center bg-gray-50 p-2 rounded border border-gray-100"><div class="flex-1 pr-2"><span class="text-sm font-semibold"><span class="text-blue-500 mr-1">${item.qty}x</span> ${formatItemNameHTML(item.name, iStatus === 'done')}</span>${item.note ? `<p class="text-xs text-red-500 font-bold mt-0.5">📌 ${item.note}</p>` : ''}</div><div class="flex items-center gap-1 shrink-0"><span class="${iColor} text-[10px] font-bold bg-white px-2 py-1 rounded shadow-sm border"><i class="fa-solid ${iIcon} mr-1"></i> ${iLabel}</span><button onclick="cancelItemFromOrder('${key}', ${originalIndex})" class="text-red-500 hover:text-red-700 py-1.5 px-2 active:scale-90 ml-1 bg-red-50 rounded border border-red-200 shadow-sm flex items-center gap-1"><i class="fa-solid fa-trash-can"></i> <span class="text-[10px] font-bold">ลบ</span></button></div></div>`; }); itemsListHtml += `</div>`; html += `<div class="bg-white rounded-xl shadow-sm border p-4 ${order.status === 'done' ? 'border-2 border-green-400' : ''}"><div class="flex justify-between items-center mb-2"><span class="font-bold text-lg text-gray-800">โต๊ะ: ${order.tableNo}</span><span class="status-badge ${statusColor}">${statusText}</span></div><p class="text-xs text-gray-500 mb-2"><i class="fa-regular fa-clock"></i> สั่งเมื่อ: ${timeStr}</p>${itemsListHtml}${serveBtn}</div>`; } } if(count === 0) html = `<div class="text-center py-10 text-gray-400 text-sm">ไม่มีออเดอร์ในระบบ</div>`; container.innerHTML = html; }
         async function markAsServed(orderKey) { try { await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'PATCH', body: JSON.stringify({ status: 'served' }) }); fetchActiveOrders(); } catch (e) {} }
         window.cancelItemFromOrder = function(orderKey, itemIndex) { showModal('confirm', 'ยกเลิกเมนู', "⚠️ ยืนยันการ 'ยกเลิก' เมนูนี้?", async () => { const order = activeOrders[orderKey]; if(!order || !order.items || !order.items[itemIndex]) return; order.items[itemIndex].itemStatus = 'canceled'; order.totalAmount = order.items.filter(i => i.itemStatus !== 'canceled').reduce((sum, it) => sum + (it.totalPrice || 0), 0); renderStatus(); renderKitchen(); renderCashier(); try { if(order.totalAmount === 0 && order.items.every(i => i.itemStatus === 'canceled')) { order.status = 'canceled'; await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'PATCH', body: JSON.stringify({ status: 'canceled', items: order.items, totalAmount: 0 }) }); } else { await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'PATCH', body: JSON.stringify({ items: order.items, totalAmount: order.totalAmount }) }); } logActivity('CANCEL_ITEM', `ยกเลิกอาหาร: ${order.items[itemIndex].name} (โต๊ะ ${order.tableNo})`); } catch (e) { alert("เกิดข้อผิดพลาด"); } }); };
-        window.cancelActiveOrderFromCashier = function(orderKey) { showModal('confirm', 'ยกเลิกบิล', 'ยืนยันการยกเลิกบิลใช่หรือไม่?', async () => { try { const order = activeOrders[orderKey]; if(!order) return; const paidAt = new Date().toISOString(); const canceledOrder = { ...order, status: 'canceled_cleared', canceledAt: paidAt, cashierName: currentUser?.Name || '-' }; const dateKey = getBusinessDateKey(paidAt); await fetch(`${FIREBASE_URL}OrderHistory/${dateKey}/${canceledOrder.orderId}.json`, { method: 'PUT', body: JSON.stringify(canceledOrder) }); await fetch(`${FIREBASE_URL}ActiveOrders/${orderKey}.json`, { method: 'DELETE' }); logActivity('CANCEL_ORDER', `แคชเชียร์ยกเลิกบิล โต๊ะ: ${order.tableNo}`); fetchActiveOrders(); } catch (e) {} }); };
+        window.cancelActiveOrderFromCashier = function(orderKey) {
+            const keys = orderKey.split(',');
+            const label = keys.length > 1 ? `โต๊ะ (รวมบิล) ของ ${activeOrders[keys[0]]?.tableNo}` : `โต๊ะ ${activeOrders[orderKey]?.tableNo}`;
+            showModal('confirm', 'ยกเลิกบิล', `ยืนยันการยกเลิกบิลสำหรับ ${label} ใช่หรือไม่?`, async () => {
+                try {
+                    const paidAt = new Date().toISOString();
+                    const dateKey = getBusinessDateKey(paidAt);
+                    for (let k of keys) {
+                        const order = activeOrders[k];
+                        if (!order) continue;
+                        const canceledOrder = {
+                            ...order,
+                            status: 'canceled_cleared',
+                            canceledAt: paidAt,
+                            cashierName: currentUser?.Name || '-'
+                        };
+                        await fetch(`${FIREBASE_URL}OrderHistory/${dateKey}/${canceledOrder.orderId}.json`, { method: 'PUT', body: JSON.stringify(canceledOrder) });
+                        await fetch(`${FIREBASE_URL}ActiveOrders/${k}.json`, { method: 'DELETE' });
+                        delete activeOrders[k];
+                    }
+                    logActivity('CANCEL_ORDER', `แคชเชียร์ยกเลิกบิล ${label}`);
+                    fetchActiveOrders();
+                } catch (e) {
+                    alert('❌ เกิดข้อผิดพลาดในการยกเลิกบิล');
+                }
+            });
+        };
         function canApproveDiscount() {
             const p = currentUser?.Permissions || {};
             const role = String(currentUser?.Role || '').toLowerCase();
@@ -689,8 +728,31 @@
         }
 
         window.calculateDiscountPreview = function() {
-            if(!currentCheckoutKey || !activeOrders[currentCheckoutKey]) return;
-            const order = activeOrders[currentCheckoutKey];
+            if(!currentCheckoutKey) return;
+            const keys = currentCheckoutKey.split(',');
+            let order;
+            if (keys.length > 1) {
+                const subOrders = keys.map(k => activeOrders[k]).filter(Boolean);
+                if (subOrders.length === 0) return;
+                let allItems = [];
+                subOrders.forEach(so => {
+                    if (so.items) allItems.push(...so.items);
+                });
+                const totalAmount = subOrders.reduce((sum, so) => sum + Number(so.totalAmount || 0), 0);
+                order = {
+                    orderId: subOrders[0].orderId,
+                    tableNo: subOrders[0].tableNo,
+                    orderType: subOrders[0].orderType,
+                    staffName: subOrders[0].staffName,
+                    timestamp: subOrders[0].timestamp,
+                    items: allItems,
+                    totalAmount: totalAmount
+                };
+            } else {
+                order = activeOrders[currentCheckoutKey];
+            }
+            if(!order) return;
+
             const discount = getCheckoutDiscount(order);
             const canDiscount = canApproveDiscount();
             const subtotalEl = document.getElementById('checkoutSubtotal');
@@ -717,8 +779,19 @@
 
         function openQRModal(orderKey) {
             currentCheckoutKey = orderKey;
-            const order = activeOrders[orderKey];
-            document.getElementById('qrTableNo').innerText = order.tableNo;
+            const keys = orderKey.split(',');
+            let displayTableNo = "";
+            if (keys.length > 1) {
+                const subOrders = keys.map(k => activeOrders[k]).filter(Boolean);
+                if (subOrders.length > 0) {
+                    displayTableNo = subOrders[0].tableNo;
+                }
+            } else {
+                const order = activeOrders[orderKey];
+                if (order) displayTableNo = order.tableNo;
+            }
+            document.getElementById('qrTableNo').innerText = displayTableNo;
+            
             const receipt = appSettings.receipt || {};
             const qrImg = document.getElementById('promptPayQrImage');
             const qrLabel = document.getElementById('promptPayQrLabel');
@@ -727,7 +800,6 @@
             if(qrLabel) qrLabel.innerHTML = `<i class="fa-solid fa-qrcode mr-1"></i> ${receipt.promptPayName ? `PromptPay: ${receipt.promptPayName}` : 'สแกนเพื่อจ่าย'}`;
             if(qrBox) qrBox.classList.remove('hidden');
             
-            // ซ่อนกล่องส่วนลดท้ายบิลทั้งหมด หากผู้ใช้ไม่มีสิทธิ์ในการให้ส่วนลด
             const discountBox = document.getElementById('discountBox');
             const canDiscount = canApproveDiscount();
             if(discountBox) {
@@ -746,7 +818,30 @@
             if(!currentCheckoutKey) return;
             try {
                 const keyToUpdate = currentCheckoutKey;
-                const order = activeOrders[keyToUpdate];
+                const keys = keyToUpdate.split(',');
+                let order;
+                if (keys.length > 1) {
+                    const subOrders = keys.map(k => activeOrders[k]).filter(Boolean);
+                    if (subOrders.length === 0) return;
+                    let allItems = [];
+                    subOrders.forEach(so => {
+                        if (so.items) allItems.push(...so.items);
+                    });
+                    const totalAmount = subOrders.reduce((sum, so) => sum + Number(so.totalAmount || 0), 0);
+                    order = {
+                        orderId: "B-COMB-" + Date.now().toString().slice(-5),
+                        tableNo: subOrders[0].tableNo,
+                        orderType: subOrders[0].orderType,
+                        staffName: subOrders[0].staffName,
+                        timestamp: subOrders[0].timestamp,
+                        items: allItems,
+                        totalAmount: totalAmount
+                    };
+                } else {
+                    order = activeOrders[keyToUpdate];
+                }
+                if (!order) return;
+
                 const discount = getCheckoutDiscount(order);
                 if(discount.amount > 0 && !canApproveDiscount()) return alert('⚠️ บัญชีนี้ไม่มีสิทธิ์ให้ส่วนลดท้ายบิลครับ');
                 if(discount.amount > 0 && !discount.reason) return alert('⚠️ กรุณากรอกเหตุผลของส่วนลดก่อนรับชำระเงินครับ');
@@ -770,14 +865,25 @@
                     cashierName: currentUser?.Name || order.staffName || '-'
                 };
 
-                delete activeOrders[keyToUpdate];
+                // Clear locally
+                keys.forEach(k => {
+                    delete activeOrders[k];
+                });
                 currentCheckoutKey = null;
                 document.getElementById('qrModal').classList.add('hidden');
                 renderCashier(); renderStatus(); renderKitchen();
+                
+                // Save to OrderHistory
                 const dateKey = getBusinessDateKey(paidAt);
                 await fetch(`${FIREBASE_URL}OrderHistory/${dateKey}/${paidOrder.orderId}.json`, { method: 'PUT', body: JSON.stringify(paidOrder) });
-                await fetch(`${FIREBASE_URL}ActiveOrders/${keyToUpdate}.json`, { method: 'DELETE' });
-                logActivity('PAYMENT', `รับชำระเงิน โต๊ะ ${order.tableNo} ยอดสุทธิ ฿${paidOrder.totalAmount.toLocaleString()}${discount.amount ? ` (ลด ฿${discount.amount.toLocaleString()}: ${discount.reason})` : ''} ด้วย ${method}`);
+                
+                // Delete from Firebase ActiveOrders
+                const promises = keys.map(k => 
+                    fetch(`${FIREBASE_URL}ActiveOrders/${k}.json`, { method: 'DELETE' })
+                );
+                await Promise.all(promises);
+
+                logActivity('PAYMENT', `รับชำระเงิน โต๊ะ ${order.tableNo} (รวมบิล) ยอดสุทธิ ฿${paidOrder.totalAmount.toLocaleString()}${discount.amount ? ` (ลด ฿${discount.amount.toLocaleString()}: ${discount.reason})` : ''} ด้วย ${method}`);
                 alert('💰 รับชำระเงินเรียบร้อยแล้ว!');
             } catch (e) {
                 alert('❌ เกิดข้อผิดพลาดตอนรับชำระเงิน');
@@ -848,16 +954,66 @@
             let count = 0;
             const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
-            for(let key in activeOrders) {
+            // Group Dine-in active orders by tableNo
+            const groupedOrdersList = [];
+            const dineInGroups = {};
+
+            for (let key in activeOrders) {
                 const order = activeOrders[key];
-                if(order.status === 'booked' || order.status === 'canceled_cleared') continue;
+                if (order.status === 'booked' || order.status === 'canceled_cleared') continue;
+
+                if (order.orderType === 'Dine-in') {
+                    const tbl = String(order.tableNo || '').trim();
+                    if (dineInGroups[tbl]) {
+                        dineInGroups[tbl].keys.push(key);
+                        dineInGroups[tbl].items = [...dineInGroups[tbl].items, ...(order.items || [])];
+                        dineInGroups[tbl].totalAmount += Number(order.totalAmount || 0);
+                        
+                        // Status priority: pending/cooking > done/served > canceled
+                        const statusPriority = { 'pending': 3, 'cooking': 2, 'served': 1, 'done': 1, 'canceled': 0 };
+                        if ((statusPriority[order.status] || 0) > (statusPriority[dineInGroups[tbl].status] || 0)) {
+                            dineInGroups[tbl].status = order.status;
+                        }
+                        if (order.timestamp && order.timestamp < dineInGroups[tbl].timestamp) {
+                            dineInGroups[tbl].timestamp = order.timestamp;
+                        }
+                    } else {
+                        dineInGroups[tbl] = {
+                            keys: [key],
+                            tableNo: order.tableNo,
+                            orderType: order.orderType,
+                            timestamp: order.timestamp,
+                            status: order.status,
+                            totalAmount: Number(order.totalAmount || 0),
+                            items: [...(order.items || [])],
+                            staffName: order.staffName
+                        };
+                        groupedOrdersList.push(dineInGroups[tbl]);
+                    }
+                } else {
+                    groupedOrdersList.push({
+                        keys: [key],
+                        tableNo: order.tableNo,
+                        orderType: order.orderType,
+                        timestamp: order.timestamp,
+                        status: order.status,
+                        totalAmount: Number(order.totalAmount || 0),
+                        items: [...(order.items || [])],
+                        staffName: order.staffName
+                    });
+                }
+            }
+
+            for (let i = 0; i < groupedOrdersList.length; i++) {
+                const order = groupedOrdersList[i];
+                const key = order.keys.join(','); // Comma-separated keys
                 count++;
 
                 const isCanceledOrder = order.status === 'canceled';
                 const allItems = order.items || [];
                 const activeItems = allItems.filter(i => i.itemStatus !== 'canceled');
                 const canceledItems = allItems.filter(i => i.itemStatus === 'canceled');
-                const panelId = 'cashier-items-' + key.replace(/[^a-zA-Z0-9_-]/g, '');
+                const panelId = 'cashier-items-' + key.replace(/[^a-zA-Z0-9_-]/g, '_');
                 const timeStr = order.timestamp ? new Date(order.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-';
                 const orderTypeLabel = order.orderType === 'Takeaway' ? 'สั่งกลับบ้าน' : order.orderType === 'Delivery' ? 'เดลิเวอรี่' : order.orderType === 'Dine-in' ? 'ทานที่ร้าน' : (order.orderType || '-');
                 const isLongTableName = String(order.tableNo || '').length > 5;
