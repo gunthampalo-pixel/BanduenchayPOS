@@ -77,11 +77,73 @@
             btn.disabled = true; 
             btn.innerHTML = "⏳ กำลังส่งเข้าครัว..."; 
             const totalAmount = cart.reduce((sum, item) => sum + item.totalPrice, 0); 
-            const newOrder = { orderId: "B-" + Date.now().toString().slice(-5), tableNo: tableNo, orderType: orderType, staffName: currentUser?.Name || 'System', timestamp: new Date().toISOString(), status: "pending", totalAmount: totalAmount, items: cart }; 
+            
             try { 
-                await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); 
-                alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); 
-                logActivity('NEW_ORDER', `ส่งออเดอร์ใหม่ โต๊ะ: ${tableNo} ยอด: ฿${totalAmount.toLocaleString()}`); 
+                // Find existing active Dine-in order for the same table
+                let existingOrderKey = null;
+                if (orderType === 'Dine-in') {
+                    for (let key in activeOrders) {
+                        const order = activeOrders[key];
+                        if (order.tableNo === tableNo && order.orderType === 'Dine-in' && !['paid', 'canceled', 'canceled_cleared', 'booked'].includes(order.status)) {
+                            existingOrderKey = key;
+                            break;
+                        }
+                    }
+                }
+
+                if (existingOrderKey) {
+                    const existingOrder = activeOrders[existingOrderKey];
+                    const existingItems = existingOrder.items || [];
+                    const newItems = cart.map(item => ({
+                        ...item,
+                        itemStatus: 'pending' // Ensure new items start as pending
+                    }));
+                    const mergedItems = [...existingItems, ...newItems];
+                    const mergedTotalAmount = mergedItems
+                        .filter(i => i.itemStatus !== 'canceled')
+                        .reduce((sum, item) => sum + Number(item.totalPrice || 0), 0);
+                    
+                    // Re-calculate overall order status based on all items
+                    const activeItems = mergedItems.filter(i => i.itemStatus !== 'canceled');
+                    const allDoneGlobal = activeItems.length > 0 && activeItems.every(i => i.itemStatus === 'done');
+                    const anyDoneGlobal = activeItems.some(i => i.itemStatus === 'done' || i.itemStatus === 'cooking');
+                    let mergedStatus = 'pending';
+                    if (allDoneGlobal) {
+                        mergedStatus = 'done';
+                    } else if (anyDoneGlobal) {
+                        mergedStatus = 'cooking';
+                    }
+
+                    const updateData = {
+                        items: mergedItems,
+                        totalAmount: mergedTotalAmount,
+                        status: mergedStatus
+                    };
+
+                    await fetch(`${FIREBASE_URL}ActiveOrders/${existingOrderKey}.json`, { 
+                        method: 'PATCH', 
+                        body: JSON.stringify(updateData) 
+                    });
+                    
+                    alert(`✅ ส่งออเดอร์เพิ่ม โต๊ะ ${tableNo} สำเร็จ!`); 
+                    logActivity('NEW_ORDER', `สั่งอาหารเพิ่ม โต๊ะ: ${tableNo} ยอดเพิ่ม: ฿${totalAmount.toLocaleString()}`); 
+                } else {
+                    // No existing active order, create a new one
+                    const newOrder = { 
+                        orderId: "B-" + Date.now().toString().slice(-5), 
+                        tableNo: tableNo, 
+                        orderType: orderType, 
+                        staffName: currentUser?.Name || 'System', 
+                        timestamp: new Date().toISOString(), 
+                        status: "pending", 
+                        totalAmount: totalAmount, 
+                        items: cart 
+                    }; 
+                    await fetch(`${FIREBASE_URL}ActiveOrders.json`, { method: 'POST', body: JSON.stringify(newOrder) }); 
+                    alert(`✅ ส่งออเดอร์โต๊ะ ${tableNo} สำเร็จ!`); 
+                    logActivity('NEW_ORDER', `ส่งออเดอร์ใหม่ โต๊ะ: ${tableNo} ยอด: ฿${totalAmount.toLocaleString()}`); 
+                } 
+
                 cart = []; 
                 document.getElementById('tableNo').value = ""; 
                 updateCartUI(); 
@@ -145,7 +207,7 @@
             banner.onclick = function(e) {
                 e.stopPropagation();
                 initAndUnlockAudio();
-                window.playNotificationSound();
+                window.playSpeechNotification("ระบบเสียงแจ้งเตือนพร้อมใช้งานค่ะ");
             };
             document.body.appendChild(banner);
         };
@@ -187,6 +249,53 @@
         window.addEventListener('click', initAndUnlockAudio);
         window.addEventListener('touchstart', initAndUnlockAudio);
 
+        function playLoudDoubleChime(ctx) {
+            try {
+                const now = ctx.currentTime;
+                
+                const playBellTone = (freq, startTime, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    // Fast attack, exponential decay for bell sound
+                    gainNode.gain.linearRampToValueAtTime(0.8, startTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + duration + 0.05);
+                };
+                
+                // Play a loud C-major-ish double chime (A5 and C6)
+                playBellTone(880, now, 0.25);
+                playBellTone(1046.5, now + 0.12, 0.35);
+            } catch (e) {
+                console.error("Failed to play double chime:", e);
+            }
+        }
+
+        window.playSpeechNotification = function(text) {
+            try {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'th-TH';
+                    utterance.rate = 0.95; // Slightly slower speed for clearer voice and less jitter
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0; // Force maximum volume in SpeechSynthesis
+                    window.speechSynthesis.speak(utterance);
+                }
+            } catch (e) {
+                console.error("Speech synthesis error:", e);
+            }
+        };
+
         window.playNotificationSound = function() {
             try {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -204,33 +313,15 @@
                     return;
                 }
                 
-                const now = ctx.currentTime;
+                // Play the loud digital chime first
+                playLoudDoubleChime(ctx);
                 
-                // Tone 1: C5 (523.25 Hz)
-                const osc1 = ctx.createOscillator();
-                const gain1 = ctx.createGain();
-                osc1.type = 'sine';
-                osc1.frequency.setValueAtTime(523.25, now);
-                gain1.gain.setValueAtTime(0.15, now);
-                gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-                osc1.connect(gain1);
-                gain1.connect(ctx.destination);
-                osc1.start(now);
-                osc1.stop(now + 0.3);
-                
-                // Tone 2: E5 (659.25 Hz)
-                const osc2 = ctx.createOscillator();
-                const gain2 = ctx.createGain();
-                osc2.type = 'sine';
-                osc2.frequency.setValueAtTime(659.25, now + 0.12);
-                gain2.gain.setValueAtTime(0.15, now + 0.12);
-                gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-                osc2.connect(gain2);
-                gain2.connect(ctx.destination);
-                osc2.start(now + 0.12);
-                osc2.stop(now + 0.5);
+                // Speak "ออเดอร์มาแล้ว" after the chime starts to avoid overlapping
+                setTimeout(() => {
+                    window.playSpeechNotification("ออเดอร์มาแล้ว");
+                }, 400);
             } catch (e) {
-                console.error("Audio play error:", e);
+                console.error("Audio/Speech notification error:", e);
             }
         };
 
