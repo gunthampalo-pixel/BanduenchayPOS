@@ -590,11 +590,12 @@
             exportMenuToExcel: function() {
                 if(allMenu.length === 0) return alert("ไม่มีข้อมูลเมนูในระบบครับ");
                 let csvContent = "\uFEFF";
-                csvContent += "ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
+                csvContent += "รหัสเมนู,ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
                 
                 const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
                 
                 sortedMenu.forEach(item => {
+                    let key = `"${(item._key || '').replace(/"/g, '""')}"`;
                     let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
                     let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
                     let price = item.Price || 0;
@@ -619,7 +620,7 @@
 
                     let img = item.ImageURL && item.ImageURL !== "-" ? `"${item.ImageURL.replace(/"/g, '""')}"` : '""';
 
-                    csvContent += [name, cat, price, variants, optSets, img].join(",") + "\n";
+                    csvContent += [key, name, cat, price, variants, optSets, img].join(",") + "\n";
                 });
                 
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -995,6 +996,7 @@
                 const delimiter = lines[0].includes("\t") ? "\t" : ",";
                 const header = this.parseDelimitedLine(lines[0], delimiter).map(h => h.trim().toLowerCase());
                 const aliases = {
+                    key: ["รหัสเมนู", "รหัส", "key", "id", "menu key", "menu id"],
                     name: ["ชื่อเมนู", "เมนู", "name", "menu", "menu name"],
                     category: ["หมวดหมู่", "หมวด", "category", "cat"],
                     price: ["ราคา", "price"],
@@ -1018,6 +1020,7 @@
                     const lineNo = index + 2;
                     const name = (cells[col.name] || '').trim();
                     if(!name) { errors.push(`แถว ${lineNo}: ไม่มีชื่อเมนู`); return; }
+                    const menuKey = col.key >= 0 ? (cells[col.key] || '').trim() : '';
                     const category = (col.category >= 0 ? cells[col.category] : '') || 'ทั่วไป';
                     const basePrice = Number((col.price >= 0 ? cells[col.price] : '0') || 0);
                     const rawVariants = (col.variants >= 0 ? cells[col.variants] : '') || '';
@@ -1035,6 +1038,7 @@
                     const rawOptionSets = (col.optionSets >= 0 ? cells[col.optionSets] : '') || '';
                     const optionSets = rawOptionSets.split('|').map(v => v.trim()).filter(Boolean).map(name => optionMap[name.toLowerCase()] || name);
                     rows.push({
+                        Key: menuKey,
                         Name: name,
                         Category: category.trim() || 'ทั่วไป',
                         Price: Number(variants[0].price || 0),
@@ -1065,14 +1069,41 @@
                 if(rows.length === 0) return alert("⚠️ ยังไม่มีเมนูที่นำเข้าได้ครับ");
                 if(errors.length && !confirm(`พบข้อควรตรวจ ${errors.length} รายการ ต้องการนำเข้าแถวที่ถูกต้องต่อไหม?`)) return;
                 const replaceExisting = document.getElementById('menuImportReplaceExisting').checked;
+                
+                const existingByKey = {};
                 const existingByName = {};
-                allMenu.forEach(item => existingByName[String(item.Name || '').trim().toLowerCase()] = item._key);
+                allMenu.forEach(item => {
+                    existingByKey[item._key] = item._key;
+                    existingByName[String(item.Name || '').trim().toLowerCase()] = item._key;
+                });
+
                 const patch = {};
                 rows.forEach((item, idx) => {
-                    const existingKey = existingByName[String(item.Name || '').trim().toLowerCase()];
-                    const key = replaceExisting && existingKey ? existingKey : `menu_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
-                    patch[key] = item;
+                    const rowKey = (item.Key || '').trim();
+                    const existingKeyByName = existingByName[String(item.Name || '').trim().toLowerCase()];
+                    
+                    let key = '';
+                    if (rowKey && existingByKey[rowKey]) {
+                        // ถ้าแถวมีรหัสเมนูและมีอยู่ในฐานข้อมูล ให้เขียนทับรายการเดิม
+                        key = rowKey;
+                    } else if (replaceExisting && existingKeyByName) {
+                        // ถ้าติ๊กเขียนทับเมนูเดิม และชื่อเมนูตรงกัน ให้เขียนทับ
+                        key = existingKeyByName;
+                    } else {
+                        // นอกนั้นให้สร้างเมนูใหม่ (ใช้รหัสที่ระบุมาถ้าเป็นรหัสใหม่ หรือสุ่มสร้างถ้าไม่มี)
+                        key = rowKey || `menu_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+                    }
+                    
+                    patch[key] = {
+                        Name: item.Name,
+                        Category: item.Category,
+                        Price: item.Price,
+                        Variants: item.Variants,
+                        OptionSets: item.OptionSets,
+                        ImageURL: item.ImageURL
+                    };
                 });
+
                 const btn = document.getElementById('btnImportMenu');
                 const oldText = btn.innerHTML;
                 btn.innerHTML = "⏳ กำลังนำเข้า...";
