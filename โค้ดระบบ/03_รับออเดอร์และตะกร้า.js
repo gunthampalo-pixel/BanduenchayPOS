@@ -8,42 +8,90 @@
         let comboCurrentStepIndex = 0;
         let comboSelectedStepsData = [];
 
-        function renderCategories() {
-            // ดึงเฉพาะหมวดหมู่หลัก (ส่วนก่อนหน้าเครื่องหมาย /)
-            const dbCategories = [...new Set(allMenu.map(item => {
-                if (!item.Category) return null;
-                return item.Category.split('/')[0].trim();
-            }).filter(Boolean))];
-            
-            // เรียงให้ 'Special' อยู่ถัดจาก 'อาหารจานเดียว'
-            let categories = ['All'];
-            const targetIdx = dbCategories.indexOf('อาหารจานเดียว');
-            if (targetIdx >= 0) {
-                dbCategories.splice(targetIdx + 1, 0, 'Special');
-            } else {
-                dbCategories.push('Special');
+        let currentOptionQty = 1;
+        let currentCustomItemQty = 1;
+
+        window.changeOptionQty = function(diff) {
+            currentOptionQty = Math.max(1, currentOptionQty + diff);
+            const el = document.getElementById('optQtyDisplay');
+            if(el) el.innerText = currentOptionQty;
+        };
+
+        window.changeCustomItemQty = function(diff) {
+            currentCustomItemQty = Math.max(1, currentCustomItemQty + diff);
+            const el = document.getElementById('customItemQtyDisplay');
+            if(el) el.innerText = currentCustomItemQty;
+        };
+
+        // Helper to get broad category (Foods, Beverages, Desserts, Combo Sets, Events)
+        function getBroadMainCategory(category) {
+            if (!category) return 'อาหาร';
+            const catLower = category.toLowerCase().trim();
+            if (catLower.includes('event') || catLower.includes('catering') || catLower.includes('จัดเลี้ยง') || catLower.includes('อีเว้นต์')) {
+                return 'อีเว้นต์';
             }
-            categories = ['All', ...dbCategories];
-            categories = [...new Set(categories)]; // กรองซ้ำซ้อน
+            if (catLower.includes('beverage') || catLower.includes('drink') || catLower.includes('เครื่องดื่ม') || catLower.includes('บาร์น้ำ') || catLower.includes('น้ำ')) {
+                return 'เครื่องดื่ม';
+            }
+            if (catLower.includes('dessert') || catLower.includes('bakery') || catLower.includes('ของหวาน') || catLower.includes('ขนม') || catLower.includes('เค้ก')) {
+                return 'ของหวาน';
+            }
+            if (catLower.includes('set') || catLower.includes('combo') || catLower.includes('เซ็ต') || catLower.includes('ชุด')) {
+                return 'เซ็ตเมนู';
+            }
+            return 'อาหาร';
+        }
+
+        // Helper to get subcategory under broad category
+        function getItemSubCategory(item) {
+            if (!item.Category) return 'ทั่วไป';
+            const parts = item.Category.split('/');
+            const firstPart = parts[0].trim();
+            const firstLower = firstPart.toLowerCase();
+            
+            // Check if the first part is a broad English/Thai group name
+            const isBroadGroup = ['beverage', 'dessert', 'desserts', 'set', 'combo', 'event', 'catering', 'option', 'options', 'อื่น', 'อื่นๆ'].some(word => firstLower.includes(word));
+            
+            if (isBroadGroup) {
+                if (parts.length > 1) {
+                    return parts[1].trim();
+                }
+                return 'ทั่วไป';
+            }
+            
+            // For Food items, we use the first part (e.g. "กับข้าว", "อาหารจานเดียว", "สินค้าอบแห้ง")
+            return firstPart;
+        }
+
+        function renderCategories() {
+            const categories = [
+                { id: 'All', label: 'ทั้งหมด' },
+                { id: 'อาหาร', label: '🍲 อาหาร' },
+                { id: 'เครื่องดื่ม', label: '🥤 เครื่องดื่ม' },
+                { id: 'ของหวาน', label: '🍰 ของหวาน' },
+                { id: 'เซ็ตเมนู', label: '🍱 เซ็ตเมนู' },
+                { id: 'อีเว้นต์', label: '🎉 อีเว้นต์' },
+                { id: 'Special', label: '✨ เมนูกันเหนียว' }
+            ];
             
             const bar = document.getElementById('category-bar');
             if (bar) {
                 bar.innerHTML = categories.map(cat => 
-                    `<button onclick="filterMenu('${cat}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat === 'All' ? 'active' : ''}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`
+                    `<button onclick="filterMenu('${cat.id}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat.id === activeCategory ? 'active' : ''}">${cat.label}</button>`
                 ).join('');
             }
         }
         
         function filterMenu(cat, btnElement) { 
             activeCategory = cat;
-            activeSubCategory = 'All'; // รีเซ็ตหมวดหมู่ย่อยใหม่ทุกครั้งที่กดหมวดหมู่หลัก
+            activeSubCategory = 'All'; // Reset subcategory when changing broad category
             
             if(btnElement) { 
                 document.querySelectorAll('.category-pill').forEach(btn => btn.classList.remove('active')); 
                 btnElement.classList.add('active'); 
             } 
             
-            // ล้างช่องค้นหาเมื่อคลิกเปลี่ยนหมวดหมู่
+            // Clear search input on category change
             const searchInput = document.getElementById('menuSearchInput');
             if(searchInput && searchInput.value) {
                 searchInput.value = '';
@@ -51,34 +99,31 @@
                 document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
             }
             
-            // ตรวจสอบและแสดงแถบหมวดหมู่ย่อย
             renderSubCategories(cat);
-            
             renderMenuItems(cat, '');
         }
 
-        function renderSubCategories(mainCat) {
+        function renderSubCategories(broadCat) {
             const subBar = document.getElementById('sub-category-bar');
             if (!subBar) return;
             
-            if (mainCat === 'All') {
+            if (broadCat === 'All' || broadCat === 'Special') {
                 subBar.classList.add('hidden');
                 subBar.innerHTML = '';
                 return;
             }
             
-            // ดึงหมวดหมู่ย่อยของหมวดหมู่หลักนี้
-            const subCats = ['All', ...new Set(allMenu.filter(item => {
-                if (!item.Category) return false;
-                const parts = item.Category.split('/');
-                return parts[0].trim() === mainCat && parts.length > 1;
-            }).map(item => item.Category.split('/')[1].trim()))];
+            // Gather all items under this broad category
+            const matchingItems = allMenu.filter(item => getBroadMainCategory(item.Category) === broadCat);
+            const subCats = ['All', ...new Set(matchingItems.map(item => getItemSubCategory(item)))];
             
-            if (subCats.length > 1) { // มีหมวดหมู่ย่อยนอกจาก 'All'
+            if (subCats.length > 1) {
                 subBar.classList.remove('hidden');
-                subBar.innerHTML = subCats.map(sub => 
-                    `<button onclick="filterSubMenu('${sub}', this)" class="sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap transition-all shadow-sm ${sub === 'All' ? 'border-teal-600 text-teal-600 font-bold bg-teal-50' : 'border-slate-200 text-slate-500'}">${sub === 'All' ? 'ทั้งหมด' : sub}</button>`
-                ).join('');
+                subBar.innerHTML = subCats.map(sub => {
+                    const displayName = sub === 'All' ? 'ทั้งหมด' : sub;
+                    const isActive = sub === activeSubCategory;
+                    return `<button onclick="filterSubMenu('${sub}', this)" class="sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap transition-all shadow-sm ${isActive ? 'border-teal-600 text-teal-600 font-bold bg-teal-50' : 'border-slate-200 text-slate-500'}">${displayName}</button>`;
+                }).join('');
             } else {
                 subBar.classList.add('hidden');
                 subBar.innerHTML = '';
@@ -100,21 +145,17 @@
             const grid = document.getElementById('menu-grid'); 
             let filtered = allMenu;
             
-            // กรองตามหมวดหมู่หลัก (cat หรือ activeCategory)
+            // Filter by broad main category
             if (activeCategory !== 'All') {
-                filtered = filtered.filter(item => {
-                    if (!item.Category) return false;
-                    const mainPart = item.Category.split('/')[0].trim();
-                    return mainPart === activeCategory;
-                });
-                
-                // กรองตามหมวดหมู่ย่อย (activeSubCategory)
-                if (activeSubCategory !== 'All') {
-                    filtered = filtered.filter(item => {
-                        if (!item.Category) return false;
-                        const parts = item.Category.split('/');
-                        return parts.length > 1 && parts[1].trim() === activeSubCategory;
-                    });
+                if (activeCategory === 'Special') {
+                    filtered = [];
+                } else {
+                    filtered = filtered.filter(item => getBroadMainCategory(item.Category) === activeCategory);
+                    
+                    // Filter by subcategory
+                    if (activeSubCategory !== 'All') {
+                        filtered = filtered.filter(item => getItemSubCategory(item) === activeSubCategory);
+                    }
                 }
             }
             
@@ -290,6 +331,9 @@
         }, { capture: true, passive: true });
 
         function openOptionModal(item) {
+            currentOptionQty = 1;
+            const displayEl = document.getElementById('optQtyDisplay');
+            if (displayEl) displayEl.innerText = 1;
             currentSelectingItem = item; document.getElementById('optItemName').innerText = item.Name;
             let basePrice = item.Price || 0; if(item.Variants && item.Variants.length > 0) basePrice = item.Variants[0].price; document.getElementById('optItemPrice').innerText = `฿${basePrice}`;
             
@@ -344,7 +388,7 @@
             }
 
             let noteText = document.getElementById('optNote').value.trim(); if(addonTexts.length > 0) { finalName += ` [${addonTexts.join(', ')}]`; }
-            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category); closeOptionModal();
+            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category, currentOptionQty); closeOptionModal();
         }
 
         // ==========================================
@@ -780,6 +824,11 @@
             document.getElementById('customItemPrice').value = '';
             document.getElementById('customItemNote').value = '';
             document.getElementById('customItemCategory').value = 'Food';
+            
+            currentCustomItemQty = 1;
+            const displayEl = document.getElementById('customItemQtyDisplay');
+            if (displayEl) displayEl.innerText = 1;
+
             document.getElementById('customItemModal').classList.remove('hidden');
             
             setTimeout(() => {
@@ -810,7 +859,7 @@
             }
 
             const price = Number(priceVal);
-            addToCart(name, price, note, category);
+            addToCart(name, price, note, category, currentCustomItemQty);
             window.closeCustomItemModal();
         };
 

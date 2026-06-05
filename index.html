@@ -924,6 +924,7 @@
                             <option value="Food">🍲 ครัวร้อน (Food)</option>
                             <option value="Beverage">🥤 บาร์น้ำ (Beverage)</option>
                             <option value="Dessert">🍰 ของหวาน (Dessert)</option>
+                            <option value="อีเว้นต์">🎉 อีเว้นต์ (Event)</option>
                             <option value="อื่นๆ">📦 อื่นๆ (Other)</option>
                         </select>
                     </div>
@@ -932,6 +933,16 @@
                 <div>
                     <label class="text-xs font-bold text-slate-500 mb-1.5 block">หมายเหตุเพิ่มเติม</label>
                     <input type="text" id="customItemNote" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="เช่น เผ็ดน้อย, หวาน 50%, แยกน้ำ..." class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                </div>
+
+                <!-- Quantity Selector inside Custom Item Modal -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 mt-2">
+                    <span class="text-sm font-bold text-slate-700">จำนวนที่สั่ง:</span>
+                    <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                        <button type="button" onclick="window.changeCustomItemQty(-1)" class="text-xl font-bold text-slate-400 w-8 active:scale-90 transition-all">-</button>
+                        <span id="customItemQtyDisplay" class="font-extrabold w-8 text-center text-base text-slate-800">1</span>
+                        <button type="button" onclick="window.changeCustomItemQty(1)" class="text-xl font-bold text-teal-600 w-8 active:scale-90 transition-all">+</button>
+                    </div>
                 </div>
             </div>
             
@@ -951,6 +962,17 @@
                 <button onclick="closeOptionModal()" class="p-2 bg-gray-100 rounded-full text-gray-500 w-8 h-8 flex items-center justify-center font-bold">✕</button>
             </div>
             <div id="optionsContainer" class="flex-1 overflow-y-auto mb-4 pb-4"></div>
+            
+            <!-- Quantity Selector inside Option Modal -->
+            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-3">
+                <span class="text-sm font-bold text-slate-700">จำนวนที่สั่ง:</span>
+                <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                    <button type="button" onclick="window.changeOptionQty(-1)" class="text-xl font-bold text-slate-400 w-8 active:scale-90 transition-all">-</button>
+                    <span id="optQtyDisplay" class="font-extrabold w-8 text-center text-base text-slate-800">1</span>
+                    <button type="button" onclick="window.changeOptionQty(1)" class="text-xl font-bold text-blue-500 w-8 active:scale-90 transition-all">+</button>
+                </div>
+            </div>
+            
             <button onclick="confirmOptionsAndAdd()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95">เพิ่มลงตะกร้า</button>
         </div>
     </div>
@@ -1056,11 +1078,11 @@
     <!-- ========================================== -->
     <!-- Scripts & Logic -->
     <!-- ========================================== -->
-    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.10"></script>
-    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.10"></script>
-    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.10"></script>
-    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.10"></script>
-    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.10"></script>
-    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.10"></script>
+    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.11"></script>
+    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.11"></script>
+    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.11"></script>
+    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.11"></script>
+    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.11"></script>
+    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.11"></script>
 </body>
 </html>
