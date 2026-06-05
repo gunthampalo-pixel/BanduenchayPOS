@@ -596,10 +596,12 @@
                 
                 sortedMenu.forEach(item => {
                     let rawKey = item._key || '';
-                    if (rawKey.startsWith('-')) {
-                        rawKey = `'${rawKey}`;
+                    let key = "";
+                    if (rawKey.startsWith('-') || rawKey.startsWith('=')) {
+                        key = `"=""${rawKey.replace(/"/g, '""')}"""`;
+                    } else {
+                        key = `"${rawKey.replace(/"/g, '""')}"`;
                     }
-                    let key = `"${rawKey.replace(/"/g, '""')}"`;
                     let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
                     let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
                     let price = item.Price || 0;
@@ -1032,6 +1034,9 @@
                     const name = (cells[col.name] || '').trim();
                     if(!name) { errors.push(`แถว ${lineNo}: ไม่มีชื่อเมนู`); return; }
                     let menuKey = col.key >= 0 ? (cells[col.key] || '').trim() : '';
+                    if (menuKey.startsWith('="') && menuKey.endsWith('"')) {
+                        menuKey = menuKey.slice(2, -1);
+                    }
                     if (menuKey.startsWith("'")) {
                         menuKey = menuKey.slice(1);
                     }
@@ -1450,6 +1455,9 @@
                 if(key) {
                     const item = allMenu.find(m => m._key === key); 
                     document.getElementById('adminMenuFormTitle').innerText = "แก้ไขเมนู"; 
+                    document.getElementById('adminMenuKey').value = key;
+                    document.getElementById('adminMenuKey').disabled = true;
+                    document.getElementById('adminMenuKey').classList.add('bg-slate-200', 'text-slate-500');
                     document.getElementById('adminMenuName').value = item.Name; 
                     document.getElementById('adminMenuImage').value = item.ImageURL || "";
                     setTimeout(() => this.previewImage(), 100);
@@ -1497,6 +1505,9 @@
                     this.renderOptionSetsCheckboxes(selOpts);
                 } else {
                     document.getElementById('adminMenuFormTitle').innerText = "เพิ่มเมนูใหม่"; 
+                    document.getElementById('adminMenuKey').value = "";
+                    document.getElementById('adminMenuKey').disabled = false;
+                    document.getElementById('adminMenuKey').classList.remove('bg-slate-200', 'text-slate-500');
                     document.getElementById('adminMenuName').value = ""; 
                     document.getElementById('adminMenuImage').value = ""; 
                     document.getElementById('imagePreviewContainer').classList.add('hidden');
@@ -1642,8 +1653,26 @@
                 btn.innerHTML = "⏳ บันทึก..."; 
                 btn.disabled = true;
                 try { 
-                    if(this.editingMenuKey) await fetch(`${FIREBASE_URL}Menu/${this.editingMenuKey}.json`, { method: 'PATCH', body: JSON.stringify(menuData) }); 
-                    else await fetch(`${FIREBASE_URL}Menu.json`, { method: 'POST', body: JSON.stringify(menuData) }); 
+                    if(this.editingMenuKey) {
+                        await fetch(`${FIREBASE_URL}Menu/${this.editingMenuKey}.json`, { method: 'PATCH', body: JSON.stringify(menuData) }); 
+                    } else {
+                        const customKeyInput = document.getElementById('adminMenuKey').value.trim();
+                        if (customKeyInput && /[\.#$\[\]]/.test(customKeyInput)) {
+                            throw new Error("รหัสเมนูห้ามมีจุด (.) สัญลักษณ์ (#) ($) หรือวงเล็บเหลี่ยม ([ ])");
+                        }
+                        
+                        let finalKey = customKeyInput;
+                        if (finalKey) {
+                            const isDuplicate = allMenu.some(m => m._key === finalKey);
+                            if (isDuplicate) {
+                                throw new Error(`รหัสเมนู "${finalKey}" นี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`);
+                            }
+                        } else {
+                            finalKey = `menu_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                        }
+                        
+                        await fetch(`${FIREBASE_URL}Menu/${finalKey}.json`, { method: 'PUT', body: JSON.stringify(menuData) }); 
+                    }
                     alert('✅ บันทึกเมนูสำเร็จ!'); 
                     logActivity('SAVE_MENU', `สร้าง/แก้ไขเมนูอาหาร: ${name}`); 
                     this.closeAdminMenuFormModal(); 

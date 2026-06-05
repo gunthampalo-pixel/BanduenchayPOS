@@ -472,9 +472,15 @@
             </div>
             <div class="p-3 sm:p-5 flex-1 overflow-y-auto space-y-4 sm:space-y-5">
                 <div class="grid grid-cols-1 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อเมนู</label>
-                        <input type="text" id="adminMenuName" placeholder="เช่น อเมริกาโน่" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">รหัสเมนู (เช่น F001, B001)</label>
+                            <input type="text" id="adminMenuKey" placeholder="ปล่อยว่างเพื่อตั้งอัตโนมัติ" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อเมนู <span class="text-red-500">*</span></label>
+                            <input type="text" id="adminMenuName" placeholder="เช่น อเมริกาโน่" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -1078,11 +1084,11 @@
     <!-- ========================================== -->
     <!-- Scripts & Logic -->
     <!-- ========================================== -->
-    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.14"></script>
-    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.14"></script>
-    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.14"></script>
-    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.14"></script>
-    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.14"></script>
-    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.14"></script>
+    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.16"></script>
+    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.16"></script>
+    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.16"></script>
+    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.16"></script>
+    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.16"></script>
+    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.16"></script>
 </body>
 </html>
