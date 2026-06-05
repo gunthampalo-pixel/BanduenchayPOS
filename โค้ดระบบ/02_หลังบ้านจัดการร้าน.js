@@ -618,7 +618,14 @@
                         optSets = `"${setNames.join(' | ').replace(/"/g, '""')}"`;
                     }
 
-                    let img = item.ImageURL && item.ImageURL !== "-" ? `"${item.ImageURL.replace(/"/g, '""')}"` : '""';
+                    let img = '""';
+                    if (item.ImageURL) {
+                        if (item.ImageURL.startsWith("data:image/")) {
+                            img = `"[รูปภาพจากกล้อง]"`;
+                        } else if (item.ImageURL !== "-") {
+                            img = `"${item.ImageURL.replace(/"/g, '""')}"`;
+                        }
+                    }
 
                     csvContent += [key, name, cat, price, variants, optSets, img].join(",") + "\n";
                 });
@@ -1083,15 +1090,31 @@
                     const existingKeyByName = existingByName[String(item.Name || '').trim().toLowerCase()];
                     
                     let key = '';
+                    let existingItem = null;
                     if (rowKey && existingByKey[rowKey]) {
                         // ถ้าแถวมีรหัสเมนูและมีอยู่ในฐานข้อมูล ให้เขียนทับรายการเดิม
                         key = rowKey;
+                        existingItem = allMenu.find(m => m._key === key);
                     } else if (replaceExisting && existingKeyByName) {
                         // ถ้าติ๊กเขียนทับเมนูเดิม และชื่อเมนูตรงกัน ให้เขียนทับ
                         key = existingKeyByName;
+                        existingItem = allMenu.find(m => m._key === key);
                     } else {
                         // นอกนั้นให้สร้างเมนูใหม่ (ใช้รหัสที่ระบุมาถ้าเป็นรหัสใหม่ หรือสุ่มสร้างถ้าไม่มี)
                         key = rowKey || `menu_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+                    }
+
+                    // ป้องกันรูปภาพโดนเขียนทับหรือลบหายไป
+                    let finalImageURL = (item.ImageURL || '').trim();
+                    const isPlaceholder = finalImageURL.startsWith('[') && finalImageURL.endsWith(']');
+                    if (existingItem) {
+                        if (!finalImageURL || isPlaceholder) {
+                            finalImageURL = existingItem.ImageURL || '';
+                        }
+                    } else {
+                        if (isPlaceholder) {
+                            finalImageURL = '';
+                        }
                     }
                     
                     patch[key] = {
@@ -1100,7 +1123,7 @@
                         Price: item.Price,
                         Variants: item.Variants,
                         OptionSets: item.OptionSets,
-                        ImageURL: item.ImageURL
+                        ImageURL: finalImageURL
                     };
                 });
 
