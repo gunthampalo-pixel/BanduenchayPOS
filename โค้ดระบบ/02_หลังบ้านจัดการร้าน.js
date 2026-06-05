@@ -595,7 +595,11 @@
                 const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
                 
                 sortedMenu.forEach(item => {
-                    let key = `"${(item._key || '').replace(/"/g, '""')}"`;
+                    let rawKey = item._key || '';
+                    if (rawKey.startsWith('-')) {
+                        rawKey = `'${rawKey}`;
+                    }
+                    let key = `"${rawKey.replace(/"/g, '""')}"`;
                     let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
                     let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
                     let price = item.Price || 0;
@@ -1027,7 +1031,13 @@
                     const lineNo = index + 2;
                     const name = (cells[col.name] || '').trim();
                     if(!name) { errors.push(`แถว ${lineNo}: ไม่มีชื่อเมนู`); return; }
-                    const menuKey = col.key >= 0 ? (cells[col.key] || '').trim() : '';
+                    let menuKey = col.key >= 0 ? (cells[col.key] || '').trim() : '';
+                    if (menuKey.startsWith("'")) {
+                        menuKey = menuKey.slice(1);
+                    }
+                    if (menuKey.toUpperCase() === '#NAME?') {
+                        menuKey = ''; // Fallback for corrupted key
+                    }
                     const category = (col.category >= 0 ? cells[col.category] : '') || 'ทั่วไป';
                     const basePrice = Number((col.price >= 0 ? cells[col.price] : '0') || 0);
                     const rawVariants = (col.variants >= 0 ? cells[col.variants] : '') || '';
