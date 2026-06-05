@@ -51,6 +51,47 @@
             window.updateTestModeBanner();
         });
 
+        // Helper to get broad category (Foods, Beverages, Desserts, Combo Sets, Events)
+        window.getBroadMainCategory = function(category) {
+            if (!category) return 'อาหาร';
+            const catLower = category.toLowerCase().trim();
+            if (catLower.includes('event') || catLower.includes('catering') || catLower.includes('จัดเลี้ยง') || catLower.includes('อีเว้นต์')) {
+                return 'อีเว้นต์';
+            }
+            if (catLower.includes('beverage') || catLower.includes('drink') || catLower.includes('เครื่องดื่ม') || catLower.includes('บาร์น้ำ') || catLower.includes('น้ำ')) {
+                return 'เครื่องดื่ม';
+            }
+            if (catLower.includes('dessert') || catLower.includes('bakery') || catLower.includes('ของหวาน') || catLower.includes('ขนม') || catLower.includes('เค้ก')) {
+                return 'ของหวาน';
+            }
+            if (catLower.includes('set') || catLower.includes('combo') || catLower.includes('เซ็ต') || catLower.includes('ชุด')) {
+                return 'เซ็ตเมนู';
+            }
+            return 'อาหาร';
+        };
+
+        // Helper to get subcategory under broad category
+        window.getItemSubCategory = function(item) {
+            const categoryVal = typeof item === 'string' ? item : (item ? item.Category || item.category : '');
+            if (!categoryVal) return 'ทั่วไป';
+            const parts = categoryVal.split('/');
+            const firstPart = parts[0].trim();
+            const firstLower = firstPart.toLowerCase();
+            
+            // Check if the first part is a broad English/Thai group name
+            const isBroadGroup = ['beverage', 'dessert', 'desserts', 'set', 'combo', 'event', 'catering', 'option', 'options', 'อื่น', 'อื่นๆ'].some(word => firstLower.includes(word));
+            
+            if (isBroadGroup) {
+                if (parts.length > 1) {
+                    return parts[1].trim();
+                }
+                return 'ทั่วไป';
+            }
+            
+            // For Food items, we use the first part (e.g. "กับข้าว", "อาหารจานเดียว", "สินค้าอบแห้ง")
+            return firstPart;
+        };
+
         
         let allMenu = []; let allMenuRaw = {}; 
         let globalOptions = []; let globalOptionsRaw = {};

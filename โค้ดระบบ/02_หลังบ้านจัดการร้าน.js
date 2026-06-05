@@ -7,6 +7,67 @@
             editingStaffId: null,
             currentVariants: [],
 
+            populateGroupedCategories: function(selectElement, includeAll = false, defaultValue = '') {
+                if (!selectElement) return;
+                const dbCats = [...new Set(allMenu.map(m => m.Category).filter(Boolean))].sort();
+                
+                const groupedDbCats = {
+                    'อาหาร': [],
+                    'เครื่องดื่ม': [],
+                    'ของหวาน': [],
+                    'เซ็ตเมนู': [],
+                    'อีเว้นต์': [],
+                    'อื่นๆ': []
+                };
+                dbCats.forEach(c => {
+                    const broad = window.getBroadMainCategory(c);
+                    groupedDbCats[broad].push(c);
+                });
+
+                const broadIcons = {
+                    'อาหาร': '🍲',
+                    'เครื่องดื่ม': '🥤',
+                    'ของหวาน': '🍰',
+                    'เซ็ตเมนู': '🍱',
+                    'อีเว้นต์': '🎉',
+                    'อื่นๆ': '📦'
+                };
+
+                let html = '';
+                if (includeAll) {
+                    html += `<option value="All">ทั้งหมด</option>`;
+                }
+
+                Object.keys(groupedDbCats).forEach(broad => {
+                    const catsInBroad = groupedDbCats[broad];
+                    const icon = broadIcons[broad] || '📁';
+                    
+                    if (catsInBroad.length > 0 || broad !== 'อื่นๆ') {
+                        html += `<optgroup label="${icon} ${broad}">`;
+                        html += `<option value="${broad}">${icon} ${broad} (ทั้งหมด)</option>`;
+                        
+                        catsInBroad.forEach(c => {
+                            if (c !== broad) {
+                                html += `<option value="${c}">${c}</option>`;
+                            }
+                        });
+                        html += `</optgroup>`;
+                    }
+                });
+
+                const oldVal = selectElement.value || defaultValue;
+                selectElement.innerHTML = html;
+                
+                const allVals = [];
+                if (includeAll) allVals.push('All');
+                Object.keys(groupedDbCats).forEach(broad => {
+                    allVals.push(broad);
+                    groupedDbCats[broad].forEach(c => allVals.push(c));
+                });
+                
+                selectElement.value = allVals.includes(oldVal) ? oldVal : (includeAll ? 'All' : allVals[0] || '');
+            },
+
             verifyOwnerPin: function(pin) {
                 return String(pin || '').trim() === String(appSettings.ownerPin || '1234').trim();
             },
@@ -877,11 +938,7 @@
                 // โหลดหมวดหมู่ทั้งหมดเข้าตัวกรองด้านบนหลังบ้าน
                 const filterSel = document.getElementById('adminMenuCategoryFilter');
                 if (filterSel) {
-                    const cats = ['All', 'Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
-                    const uniqueCats = [...new Set(cats)];
-                    const oldVal = filterSel.value || 'All';
-                    filterSel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c === 'All' ? 'ทั้งหมด' : c}</option>`).join('');
-                    filterSel.value = uniqueCats.includes(oldVal) ? oldVal : 'All';
+                    this.populateGroupedCategories(filterSel, true, 'All');
                 }
 
                 // รีเซ็ตสถานะ Checkbox และปุ่ม Bulk
@@ -1044,7 +1101,12 @@
                 const filterVal = document.getElementById('adminMenuCategoryFilter')?.value || 'All';
                 let filteredMenu = [...allMenu];
                 if (filterVal !== 'All') {
-                    filteredMenu = filteredMenu.filter(m => m.Category === filterVal);
+                    const broadVals = ['อาหาร', 'เครื่องดื่ม', 'ของหวาน', 'เซ็ตเมนู', 'อีเว้นต์'];
+                    if (broadVals.includes(filterVal)) {
+                        filteredMenu = filteredMenu.filter(m => window.getBroadMainCategory(m.Category) === filterVal);
+                    } else {
+                        filteredMenu = filteredMenu.filter(m => m.Category === filterVal);
+                    }
                 }
                 
                 const sortedMenu = filteredMenu.sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
@@ -1668,9 +1730,7 @@
                 // ดึงหมวดหมู่ทั้งหมดไปใส่ในกล่องย้ายหมวดหมู่แบบกลุ่ม
                 const catSelect = document.getElementById('bulkCategorySelect');
                 if (catSelect) {
-                    const cats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
-                    const uniqueCats = [...new Set(cats)];
-                    catSelect.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
+                    this.populateGroupedCategories(catSelect, false);
                 }
 
                 const container = document.getElementById('bulkToppingOptionsContainer');

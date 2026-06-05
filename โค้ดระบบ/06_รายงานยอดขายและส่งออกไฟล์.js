@@ -117,22 +117,55 @@
 
             // สรุปยอดขายตามหมวดหมู่
             const sortedCategories = Object.entries(categorySales).sort((a, b) => b[1].totalAmount - a[1].totalAmount);
-            let itemsHtml = sortedCategories.map(([catName, catData]) => {
-                const catId = 'cat-' + catName.replace(/[^a-zA-Z0-9]/g, '');
-                const sortedItems = Object.entries(catData.items).sort((a, b) => b[1].qty - a[1].qty);
-                const subItemsHtml = sortedItems.map(([itemName, stat]) => `<div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100 mb-1.5 ml-2"><div class="flex items-center gap-2"><span class="bg-gray-200 text-gray-600 font-bold w-6 h-6 rounded-full flex items-center justify-center text-[10px]">${stat.qty}</span><span class="text-xs font-semibold text-gray-700">${itemName}</span></div><span class="font-bold text-gray-800 text-xs">฿${stat.total.toLocaleString()}</span></div>`).join('');
+            let itemsHtml = sortedCategories.map(([catName, catData], idx) => {
+                const catId = 'cat-sales-' + idx;
+                
+                const broadIcons = {
+                    'อาหาร': '🍲 อาหาร',
+                    'เครื่องดื่ม': '🥤 เครื่องดื่ม',
+                    'ของหวาน': '🍰 ของหวาน',
+                    'เซ็ตเมนู': '🍱 เซ็ตเมนู',
+                    'อีเว้นต์': '🎉 อีเว้นต์',
+                    'อื่นๆ': '📦 อื่นๆ'
+                };
+                const displayCatName = broadIcons[catName] || catName;
+                
+                const sortedSubCats = Object.entries(catData.subCats || {}).sort((a, b) => b[1].totalAmount - a[1].totalAmount);
+                
+                const subCatsHtml = sortedSubCats.map(([subCatName, subCatData]) => {
+                    const sortedItems = Object.entries(subCatData.items).sort((a, b) => b[1].qty - a[1].qty);
+                    const itemsListHtml = sortedItems.map(([itemName, stat]) => 
+                        `<div class="flex justify-between items-center bg-gray-50/50 p-2 rounded-lg border border-gray-100 mb-1 ml-4">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-gray-200 text-gray-600 font-bold w-5 h-5 rounded-full flex items-center justify-center text-[9px]">${stat.qty}</span>
+                                <span class="text-xs text-slate-600">${itemName}</span>
+                            </div>
+                            <span class="font-semibold text-slate-700 text-xs">฿${stat.total.toLocaleString()}</span>
+                        </div>`
+                    ).join('');
+                    
+                    return `
+                    <div class="mb-3 border border-slate-100 rounded-xl p-2 bg-slate-50/30">
+                        <div class="flex justify-between items-center mb-1.5 px-1">
+                            <span class="text-xs font-bold text-slate-700"><i class="fa-solid fa-folder-open text-amber-500 mr-1.5"></i>${subCatName} (${subCatData.totalQty} ชิ้น)</span>
+                            <span class="text-xs font-bold text-slate-800">฿${subCatData.totalAmount.toLocaleString()}</span>
+                        </div>
+                        ${itemsListHtml}
+                    </div>`;
+                }).join('');
+
                 return `<div class="bg-white rounded-xl border border-indigo-100 shadow-sm mb-3 overflow-hidden">
                     <button onclick="toggleAccordion('${catId}')" class="w-full flex justify-between items-center p-3 bg-indigo-50/30 hover:bg-indigo-50 transition-colors">
                         <div class="flex items-center gap-3">
                             <span class="bg-indigo-100 text-indigo-700 font-bold w-8 h-8 rounded-full flex items-center justify-center text-sm">${catData.totalQty}</span>
-                            <span class="font-bold text-indigo-900">${catName}</span>
+                            <span class="font-bold text-indigo-900">${displayCatName}</span>
                         </div>
                         <div class="flex items-center gap-3">
                             <span class="font-bold text-indigo-700">฿${catData.totalAmount.toLocaleString()}</span>
                             <i id="icon-${catId}" class="fa-solid fa-chevron-down text-indigo-400 transition-transform duration-300"></i>
                         </div>
                     </button>
-                    <div id="${catId}" class="hidden p-2 border-t border-indigo-50 bg-white">${subItemsHtml}</div>
+                    <div id="${catId}" class="hidden p-3 border-t border-indigo-50 bg-white">${subCatsHtml}</div>
                 </div>`;
             }).join('');
 
@@ -303,11 +336,24 @@
                             }
 
                             (order.items || []).filter(i => i.itemStatus !== 'canceled').forEach(item => { 
-                                let cat = item.category || 'อื่นๆ'; 
-                                if(!categorySales[cat]) { categorySales[cat] = { totalQty: 0, totalAmount: 0, items: {} }; } 
+                                let rawCat = item.category || 'อื่นๆ'; 
+                                let cat = window.getBroadMainCategory(rawCat);
+                                if(!categorySales[cat]) { categorySales[cat] = { totalQty: 0, totalAmount: 0, subCats: {} }; } 
                                 categorySales[cat].totalQty += item.qty; categorySales[cat].totalAmount += item.totalPrice; 
-                                if(!categorySales[cat].items[item.name]) { categorySales[cat].items[item.name] = { qty: 0, total: 0 }; } 
-                                categorySales[cat].items[item.name].qty += item.qty; categorySales[cat].items[item.name].total += item.totalPrice; totalItemsCount += item.qty; 
+                                
+                                let subCat = item.category || 'ทั่วไป';
+                                if(!categorySales[cat].subCats[subCat]) { 
+                                    categorySales[cat].subCats[subCat] = { totalQty: 0, totalAmount: 0, items: {} }; 
+                                }
+                                categorySales[cat].subCats[subCat].totalQty += item.qty;
+                                categorySales[cat].subCats[subCat].totalAmount += item.totalPrice;
+                                
+                                if(!categorySales[cat].subCats[subCat].items[item.name]) { 
+                                    categorySales[cat].subCats[subCat].items[item.name] = { qty: 0, total: 0 }; 
+                                } 
+                                categorySales[cat].subCats[subCat].items[item.name].qty += item.qty; 
+                                categorySales[cat].subCats[subCat].items[item.name].total += item.totalPrice;
+                                totalItemsCount += item.qty; 
                             }); 
                         } 
                     } 

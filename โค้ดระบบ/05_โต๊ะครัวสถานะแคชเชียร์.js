@@ -593,10 +593,7 @@
             const bar = document.getElementById('kitchenCategoryBar');
             if(!bar) return;
             
-            const categories = ['All', ...new Set(allMenu.map(item => {
-                if (!item.Category) return null;
-                return item.Category.split('/')[0].trim();
-            }).filter(Boolean))];
+            const categories = ['All', 'อาหาร', 'เครื่องดื่ม', 'ของหวาน', 'เซ็ตเมนู', 'อีเว้นต์'];
             
             let buttonsHtml = categories.map(cat => {
                 const isActive = currentKitchenFilters.includes(cat);
@@ -635,7 +632,7 @@
                 } 
                 if(order.status === 'pending' || order.status === 'cooking') { 
                     let filteredItems = (order.items || []).map((item, idx) => ({ ...item, originalIndex: idx })).filter(item => { 
-                        const itemMainCat = item.category ? item.category.split('/')[0].trim() : '';
+                        const itemMainCat = window.getBroadMainCategory(item.category);
                         
                         if (!currentKitchenFilters.includes('All')) {
                             return currentKitchenFilters.includes(itemMainCat);
@@ -945,6 +942,14 @@
             const isHidden = panel.classList.contains('hidden');
             panel.classList.toggle('hidden', !isHidden);
             if(icon) icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            
+            // Save state to prevent auto-collapse on data refresh
+            window.openCashierPanels = window.openCashierPanels || {};
+            if (isHidden) {
+                window.openCashierPanels[id] = true;
+            } else {
+                delete window.openCashierPanels[id];
+            }
         };
 
         function renderCashier() {
@@ -1014,6 +1019,10 @@
                 const activeItems = allItems.filter(i => i.itemStatus !== 'canceled');
                 const canceledItems = allItems.filter(i => i.itemStatus === 'canceled');
                 const panelId = 'cashier-items-' + key.replace(/[^a-zA-Z0-9_-]/g, '_');
+                window.openCashierPanels = window.openCashierPanels || {};
+                const isPanelOpen = window.openCashierPanels[panelId] === true;
+                const panelClass = isPanelOpen ? 'cashier-items-panel' : 'cashier-items-panel hidden';
+                const iconStyle = isPanelOpen ? 'style="transform: rotate(180deg);"' : '';
                 const timeStr = order.timestamp ? new Date(order.timestamp).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit'}) : '-';
                 const orderTypeLabel = order.orderType === 'Takeaway' ? 'สั่งกลับบ้าน' : order.orderType === 'Delivery' ? 'เดลิเวอรี่' : order.orderType === 'Dine-in' ? 'ทานที่ร้าน' : (order.orderType || '-');
                 const isLongTableName = String(order.tableNo || '').length > 5;
@@ -1075,10 +1084,10 @@
                         </button>
                         <div class="cashier-actions-cell flex gap-2 justify-end">
                             <button onclick="window.cancelActiveOrderFromCashier('${key}')" class="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex justify-center items-center active:scale-95 border border-red-100" title="${isCanceledOrder ? 'ลบออกจากจอ' : 'ยกเลิกบิล'}"><i class="fa-solid ${isCanceledOrder ? 'fa-check' : 'fa-trash-can'}"></i></button>
-                            ${isCanceledOrder ? `<button onclick="toggleCashierItems('${panelId}')" class="flex-1 min-w-[116px] text-sm bg-slate-100 text-slate-600 py-2 rounded-xl font-bold active:scale-95"><i id="${panelId}-icon" class="fa-solid fa-chevron-down mr-1 transition-transform"></i> ดูรายการ</button>` : `<button onclick="openQRModal('${key}')" class="flex-1 min-w-[116px] text-sm bg-green-600 text-white py-2 rounded-xl font-bold shadow-sm active:scale-95"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> ชำระเงิน</button>`}
+                            ${isCanceledOrder ? `<button onclick="toggleCashierItems('${panelId}')" class="flex-1 min-w-[116px] text-sm bg-slate-100 text-slate-600 py-2 rounded-xl font-bold active:scale-95"><i id="${panelId}-icon" class="fa-solid fa-chevron-down mr-1 transition-transform" ${iconStyle}></i> ดูรายการ</button>` : `<button onclick="openQRModal('${key}')" class="flex-1 min-w-[116px] text-sm bg-green-600 text-white py-2 rounded-xl font-bold shadow-sm active:scale-95"><i class="fa-solid fa-file-invoice-dollar mr-1"></i> ชำระเงิน</button>`}
                         </div>
                     </div>
-                    <div id="${panelId}" class="cashier-items-panel hidden">
+                    <div id="${panelId}" class="${panelClass}">
                         <div class="flex justify-between items-center mb-2">
                             <p class="text-xs font-bold text-slate-500">รายการในบิล (${allItems.length})</p>
                             ${canceledItems.length ? `<span class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full border border-red-100">มีรายการยกเลิก ${canceledItems.length}</span>` : ''}
@@ -1216,7 +1225,7 @@
             order.items.forEach((item, idx) => {
                 if (item.itemStatus === 'canceled') return;
 
-                const itemMainCat = item.category ? item.category.split('/')[0].trim() : '';
+                const itemMainCat = window.getBroadMainCategory(item.category);
                 let isVisible = false;
                 
                 if (!currentKitchenFilters.includes('All')) {
