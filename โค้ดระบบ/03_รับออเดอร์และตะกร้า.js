@@ -348,7 +348,7 @@
             }
 
             let noteText = document.getElementById('optNote').value.trim(); if(addonTexts.length > 0) { finalName += ` [${addonTexts.join(', ')}]`; }
-            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category, currentOptionQty); closeOptionModal();
+            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category, currentOptionQty, currentSelectingItem._key); closeOptionModal();
         }
 
         // ==========================================
@@ -771,7 +771,7 @@
                 });
                 
                 const combinedName = `${currentComboItem.Name} [${parts.join(', ')}]`;
-                addToCart(combinedName, totalPrice, "", currentComboItem.Category);
+                addToCart(combinedName, totalPrice, "", currentComboItem.Category, 1, currentComboItem._key);
                 closeComboModal();
             }
         };
@@ -819,7 +819,7 @@
             }
 
             const price = Number(priceVal);
-            addToCart(name, price, note, category, currentCustomItemQty);
+            addToCart(name, price, note, category, currentCustomItemQty, 'custom');
             window.closeCustomItemModal();
         };
 

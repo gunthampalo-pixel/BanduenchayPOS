@@ -383,7 +383,7 @@
             if(!window.currentPaidOrders || window.currentPaidOrders.length === 0) return alert("⚠️ ไม่มีข้อมูลยอดขายสำหรับดาวน์โหลดครับ"); 
             let csvContent = "\uFEFF"; 
             
-            csvContent += "วันที่,เวลา,รหัสบิล,ประเภท,วิธีชำระ,แคชเชียร์,ชื่อเมนูหลัก,รูปแบบ (ร้อน/เย็น/ไซส์),ท็อปปิ้ง,จำนวน,ราคาต่อชิ้น,ราคารวม,หมายเหตุเพิ่มเติม\n"; 
+            csvContent += "วันที่,เวลา,รหัสบิล,ประเภท,วิธีชำระ,แคชเชียร์,รหัสเมนู,ชื่อเมนูหลัก,รูปแบบ (ร้อน/เย็น/ไซส์),ท็อปปิ้ง,จำนวน,ราคาต่อชิ้น,ราคารวม,หมายเหตุเพิ่มเติม\n"; 
             
             window.currentPaidOrders.forEach(order => { 
                 const dateObj = new Date(order.timestamp);
@@ -418,6 +418,20 @@
                     const safeNote = `"${(item.note || '-').replace(/"/g, '""')}"`;
                     const pricePerUnit = item.totalPrice / item.qty;
 
+                    // ค้นหารหัสเมนู (จาก item.menuKey หรือค้นจากชื่อฐานข้อมูล allMenu)
+                    let rawKey = item.menuKey || '';
+                    if (!rawKey || rawKey === 'custom') {
+                        const refMenu = (typeof allMenu !== 'undefined') ? allMenu.find(m => String(m.Name || '').trim() === baseMenuName) : null;
+                        rawKey = refMenu ? refMenu._key : (rawKey || '-');
+                    }
+
+                    let safeMenuKey = "";
+                    if (rawKey.startsWith('-') || rawKey.startsWith('=')) {
+                        safeMenuKey = `"=""${rawKey.replace(/"/g, '""')}"""`;
+                    } else {
+                        safeMenuKey = `"${rawKey.replace(/"/g, '""')}"`;
+                    }
+
                     let row = [
                         dateStr, 
                         timeStr, 
@@ -425,6 +439,7 @@
                         order.orderType || '-', 
                         order.paymentMethod || '-', 
                         order.staffName || '-', 
+                        safeMenuKey,
                         safeBaseName, 
                         safeVariant,
                         safeToppings,
