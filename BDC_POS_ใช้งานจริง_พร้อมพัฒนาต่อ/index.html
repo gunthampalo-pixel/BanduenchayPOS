@@ -11,6 +11,12 @@
 </head>
 <body class="min-h-screen">
 
+    <!-- ⚠️ Test Mode Banner -->
+    <div id="test-mode-banner" class="hidden bg-amber-500 text-slate-900 font-bold text-center text-xs py-1.5 px-4 z-[110] relative shadow-inner">
+        <i class="fa-solid fa-triangle-exclamation mr-1.5 animate-bounce"></i>
+        โหมดทดสอบ (Test Mode) - ออเดอร์และยอดขายที่ทำจากเครื่องนี้จะไม่ส่งผลต่อร้านจริง
+    </div>
+
     <!-- ========================================== -->
     <!-- 📦 MODULE 1: ระบบล็อกอิน (Auth System) -->
     <!-- ========================================== -->
@@ -66,27 +72,26 @@
     <!-- ========================================== -->
     <div id="page-order" class="page-content pb-36 hidden">
         <div class="bg-white p-4 shadow-sm sticky top-[56px] z-20">
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                    <label class="text-xs text-gray-500 ml-1">ประเภทบิล</label>
-                    <select id="orderType" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="Dine-in">ทานที่ร้าน</option>
-                        <option value="Takeaway">สั่งกลับบ้าน</option>
-                        <option value="Delivery">เดลิเวอรี่</option>
+            <!-- 📍 ส่วนหัวควบคุมออเดอร์ (Compact Order Control Row) -->
+            <div class="flex flex-row items-center gap-2 mb-2">
+                <!-- ประเภทบิล (Bill Type Select) -->
+                <div class="w-2/5 sm:w-1/4 max-w-[140px]">
+                    <select id="orderType" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-medium">
+                        <option value="Dine-in">📍 ทานร้าน</option>
+                        <option value="Takeaway">🛍️ กลับบ้าน</option>
+                        <option value="Delivery">🛵 ส่งของ</option>
                     </select>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-500 ml-1 flex justify-between">
-                        <span>โต๊ะ / ชื่อลูกค้า</span>
-                        <button onclick="openTableModal()" class="text-blue-500 font-bold"><i class="fa-solid fa-map"></i> ผังโต๊ะ</button>
-                    </label>
-                    <div class="flex gap-1">
-                        <input type="text" id="tableNo" placeholder="เช่น A1, พี่หนุ่ม" class="w-full p-2 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
+                <!-- โต๊ะ / ชื่อลูกค้า (Table / Customer Input with Embedded Map Button) -->
+                <div class="flex-1 relative">
+                    <input type="text" id="tableNo" placeholder="เลขโต๊ะ / ลูกค้า" class="w-full p-2 pr-9 border rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button onclick="openTableModal()" class="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-blue-600 hover:text-blue-800 transition-colors" title="ผังโต๊ะ">
+                        <i class="fa-solid fa-map-location-dot text-base"></i>
+                    </button>
                 </div>
             </div>
             <!-- 🔍 ช่องค้นหาอัจฉริยะ (Smart Menu Search Bar) -->
-            <div class="relative mb-3">
+            <div class="relative mb-2">
                 <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
                 <input type="text" id="menuSearchInput" oninput="searchMenu()" placeholder="ค้นหาเมนูอาหาร/เครื่องดื่ม... (พิมพ์ กาแฟ, ข้าว)" class="w-full pl-10 pr-10 p-2.5 rounded-xl border bg-gray-50 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all">
                 <button id="clearMenuSearchBtn" onclick="clearMenuSearch()" class="hidden absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 font-bold w-6 h-6 flex items-center justify-center rounded-full bg-gray-200/50">✕</button>
@@ -134,10 +139,13 @@
 
     <div id="page-kitchen" class="page-content pb-24 hidden">
         <div class="bg-orange-50 p-4 border-b flex justify-between items-center sticky top-[56px] z-20">
-            <div>
-                <h1 class="text-xl font-bold text-orange-600" id="kitchen-title"><i class="fa-solid fa-fire-burner mr-2"></i>ออเดอร์เข้าใหม่</h1>
+            <div class="flex-1 min-w-0 mr-3">
+                <div class="flex items-center gap-3 mb-2">
+                    <h1 class="text-xl font-bold text-orange-600" id="kitchen-title"><i class="fa-solid fa-fire-burner mr-2"></i>ออเดอร์เข้าใหม่</h1>
+                </div>
+                <div id="kitchenCategoryBar" class="flex gap-2 overflow-x-auto pb-1 max-w-full no-scrollbar"></div>
             </div>
-            <button onclick="fetchActiveOrders()" class="bg-white p-2 rounded-full shadow text-orange-500 text-sm w-9 h-9 flex items-center justify-center"><i class="fa-solid fa-rotate-right"></i></button>
+            <button onclick="fetchActiveOrders()" class="bg-white p-2 rounded-full shadow text-orange-500 text-sm w-9 h-9 flex items-center justify-center shrink-0"><i class="fa-solid fa-rotate-right"></i></button>
         </div>
         <div id="kitchen-container" class="p-4 space-y-4 grid grid-cols-1 md:grid-cols-2 gap-4"></div>
     </div>
@@ -169,7 +177,7 @@
                     <span class="text-[10px] font-bold text-indigo-400">ถึง</span>
                     <input type="date" id="salesDateEnd" onchange="fetchSalesData()" class="bg-transparent font-bold outline-none text-xs">
                 </div>
-                <button onclick="exportSalesToExcel()" class="bg-green-600 text-white p-2 px-3 rounded-xl shadow-md text-sm font-bold active:scale-95 transition-all"><i class="fa-solid fa-file-excel mr-1"></i> โหลด Excel</button>
+                <button onclick="exportSalesItemsCSV()" class="bg-green-600 text-white p-2 px-3 rounded-xl shadow-md text-sm font-bold active:scale-95 transition-all"><i class="fa-solid fa-file-excel mr-1"></i> โหลด Excel</button>
                 <button onclick="fetchSalesData()" class="bg-white p-2 rounded-xl shadow border border-indigo-100 text-indigo-600 text-sm flex items-center justify-center active:scale-95"><i class="fa-solid fa-rotate-right"></i></button>
             </div>
         </div>
@@ -301,7 +309,12 @@
                     <div class="space-y-2">
                         <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
                             <input type="checkbox" id="permOrder" class="w-5 h-5 text-blue-600 rounded">
-                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">สั่งอาหาร & สถานะ</p><p class="text-[10px] text-slate-500">สำหรับพนักงานรับออเดอร์ / เด็กเสิร์ฟ</p></div>
+                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">สั่งอาหาร (Order)</p><p class="text-[10px] text-slate-500">สำหรับรับออเดอร์และกดเลือกรายการลงตะกร้า</p></div>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+                            <input type="checkbox" id="permStatus" class="w-5 h-5 text-teal-600 rounded">
+                            <div class="flex-1"><p class="text-sm font-bold text-slate-700">ดูสถานะออเดอร์/โต๊ะ (Status)</p><p class="text-[10px] text-slate-500">สำหรับดูสถานะโต๊ะและเช็ครายการว่าอาหารเสิร์ฟหรือยัง</p></div>
                         </label>
                         
                         <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
@@ -342,6 +355,11 @@
                         <label class="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
                             <input type="checkbox" id="permTable" class="w-5 h-5 text-orange-600 rounded">
                             <div class="flex-1"><p class="text-sm font-bold text-slate-700">จัดการผังโต๊ะ (สิทธิ์ย่อย)</p><p class="text-[10px] text-slate-500">สามารถแก้ไข/เพิ่ม/ลบผังโต๊ะอาหารในร้าน</p></div>
+                        </label>
+
+                        <label class="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl cursor-pointer hover:bg-red-100/50">
+                            <input type="checkbox" id="permClear" class="w-5 h-5 text-red-600 rounded">
+                            <div class="flex-1"><p class="text-sm font-bold text-red-800">ล้างข้อมูลระบบ (สิทธิ์ย่อย)</p><p class="text-[10px] text-red-700">สามารถสั่งลบ/ล้างยอดขายและประวัติทั้งหมดในร้านได้</p></div>
                         </label>
                     </div>
                 </div>
@@ -454,9 +472,15 @@
             </div>
             <div class="p-3 sm:p-5 flex-1 overflow-y-auto space-y-4 sm:space-y-5">
                 <div class="grid grid-cols-1 gap-4">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อเมนู</label>
-                        <input type="text" id="adminMenuName" placeholder="เช่น อเมริกาโน่" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="sm:col-span-1">
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">รหัสเมนู (เช่น F001, B001)</label>
+                            <input type="text" id="adminMenuKey" placeholder="ปล่อยว่างเพื่อตั้งอัตโนมัติ" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="text-xs font-bold text-slate-500 mb-1 block">ชื่อเมนู <span class="text-red-500">*</span></label>
+                            <input type="text" id="adminMenuName" placeholder="เช่น อเมริกาโน่" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -524,14 +548,20 @@
                         <label class="text-xs font-bold text-slate-500 block">รูปภาพเมนูอาหาร</label>
                         <button type="button" onclick="appAdmin.previewImage()" class="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition-colors"><i class="fa-solid fa-eye"></i> ทดสอบรูป</button>
                     </div>
-                    <div class="flex gap-2 items-center">
-                        <input type="text" id="adminMenuImage" oninput="appAdmin.previewImage()" placeholder="วางลิงก์รูปภาพ หรืออัปโหลดไฟล์..." class="flex-1 p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm text-blue-600">
-                        <label class="bg-blue-600 text-white px-4 py-3 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 active:scale-95 transition-all text-center whitespace-nowrap">
-                            <i class="fa-solid fa-cloud-arrow-up mr-1"></i> อัปโหลดรูป
-                            <input type="file" id="adminMenuFileInput" accept="image/*" class="hidden" onchange="appAdmin.handleMenuImageUpload(event)">
-                        </label>
+                    <div class="flex gap-2 items-center flex-wrap sm:flex-nowrap">
+                        <input type="text" id="adminMenuImage" oninput="appAdmin.previewImage()" placeholder="วางลิงก์รูปภาพ หรืออัปโหลดไฟล์..." class="flex-1 min-w-[150px] p-3 rounded-xl border border-slate-300 bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm text-blue-600">
+                        <div class="flex gap-1.5 shrink-0">
+                            <label class="bg-blue-600 text-white px-3 py-3 rounded-xl text-xs font-bold cursor-pointer hover:bg-blue-700 active:scale-95 transition-all text-center whitespace-nowrap">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> อัปโหลดรูป
+                                <input type="file" id="adminMenuFileInput" accept="image/*" class="hidden" onchange="appAdmin.handleMenuImageUpload(event)">
+                            </label>
+                            <label class="bg-emerald-600 text-white px-3 py-3 rounded-xl text-xs font-bold cursor-pointer hover:bg-emerald-700 active:scale-95 transition-all text-center whitespace-nowrap">
+                                <i class="fa-solid fa-camera mr-1"></i> ถ่ายรูป
+                                <input type="file" id="adminMenuCameraInput" accept="image/*" capture="environment" class="hidden" onchange="appAdmin.handleMenuImageUpload(event)">
+                            </label>
+                        </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 mt-1">กดปุ่ม "อัปโหลดรูป" เพื่ออัปโหลดไฟล์จากคลังรูปในเครื่องได้โดยตรง หรือสามารถวางลิงก์รูปได้ครับ</p>
+                    <p class="text-[10px] text-slate-400 mt-1">กดปุ่ม "ถ่ายรูป" เพื่อใช้กล้องถ่ายรูป หรือ "อัปโหลดรูป" เพื่อเลือกไฟล์ภาพ และรองรับการใส่ลิงก์รูปโดยตรงครับ</p>
                     
                     <div id="imagePreviewContainer" class="mt-3 hidden bg-white p-2 border border-slate-200 rounded-xl text-center">
                         <img id="imagePreview" src="" class="h-24 mx-auto object-cover rounded-lg shadow-sm hidden">
@@ -741,7 +771,7 @@
     <div id="adminClearDataModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] flex items-center justify-center p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col animate-fade-in">
             <div class="p-4 border-b bg-red-50 flex justify-between items-center">
-                <h2 class="text-lg font-bold text-red-900"><i class="fa-solid fa-trash-arrow-up text-red-600 mr-2"></i>เคลียร์ข้อมูลเก่ากว่า 30 วัน</h2>
+                <h2 class="text-lg font-bold text-red-900"><i class="fa-solid fa-trash-arrow-up text-red-600 mr-2"></i>เคลียร์ข้อมูลระบบร้าน</h2>
                 <button onclick="appAdmin.closeClearDataModal()" class="w-8 h-8 bg-red-200 rounded-full text-red-700 font-bold active:scale-95">✕</button>
             </div>
             <div class="p-5 flex-1 space-y-4">
@@ -752,24 +782,37 @@
                 
                 <div class="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3">
                     <div class="bg-white p-3 rounded-xl border border-slate-200 text-center">
-                        <p class="text-[10px] text-slate-500 mb-1">บิลที่จบแล้วเกิน 30 วัน</p>
+                        <p class="text-[10px] text-slate-500 mb-1">บิลที่จบแล้วเกิน 60 วัน</p>
                         <p id="oldOrdersCount" class="text-2xl font-bold text-red-600">0</p>
                     </div>
                     <div class="bg-white p-3 rounded-xl border border-slate-200 text-center">
-                        <p class="text-[10px] text-slate-500 mb-1">ประวัติใช้งานเกิน 30 วัน</p>
+                        <p class="text-[10px] text-slate-500 mb-1">ประวัติใช้งานเกิน 60 วัน</p>
                         <p id="oldLogsCount" class="text-2xl font-bold text-red-600">0</p>
                     </div>
                 </div>
 
                 <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-800 leading-relaxed">
-                    ระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า 30 วัน: บิลที่จบแล้ว และประวัติการเข้าใช้งาน/การทำรายการเท่านั้น ข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ
+                    ระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า 60 วัน: บิลที่จบแล้ว และประวัติการเข้าใช้งาน/การทำรายการเท่านั้น ข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ
                 </div>
 
                 <div class="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm mt-2">
-                    <label class="text-xs font-bold text-red-800 mb-1 block">PIN / รหัสผ่านของบัญชีที่ล็อกอินอยู่ <span class="text-red-500">*</span></label>
-                    <input type="password" id="clearConfirmPin" placeholder="ถ้าใช้ Admin Test ให้กรอก 1234" class="w-full p-2.5 rounded-xl border border-red-300 bg-white outline-none text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500">
-                    <p class="text-[10px] text-red-700 mt-2 leading-relaxed">
-                        วิธีลบ: ใส่ PIN ของบัญชีที่ล็อกอินอยู่ แล้วกด “ยืนยันการลบ” จากนั้นกด OK ในหน้าต่างยืนยัน ถ้าใช้ Admin Test ให้พิมพ์ <b>1234</b>
+                    <label class="text-xs font-bold text-red-800 mb-1 block">PIN / รหัสผ่านเพื่อยืนยันการทำรายการ <span class="text-red-500">*</span></label>
+                    <input type="password" id="clearConfirmPin" placeholder="กรอกรหัสผ่าน (PIN) ของท่าน..." class="w-full p-2.5 rounded-xl border border-red-300 bg-white outline-none text-sm focus:border-red-500 focus:ring-1 focus:ring-red-500">
+                    
+                    <!-- 🌟 ส่วนเคลียร์บิลทดสอบทั้งหมดสำหรับเจ้าของร้าน (Owner Only) 🌟 -->
+                    <label id="ownerClearAllSalesContainer" class="hidden flex items-center gap-2 text-xs font-bold text-red-700 bg-white p-2.5 rounded-xl border border-red-200 cursor-pointer mt-3 shadow-sm select-none">
+                        <input type="checkbox" id="clearAllSalesCheckbox" onchange="appAdmin.onClearAllSalesCheckboxChange(this)" class="w-4 h-4 text-red-600 rounded cursor-pointer">
+                        <span>ล้างยอดขายและประวัติทั้งหมด (เคลียร์บิลทดสอบเป็น 0)</span>
+                    </label>
+                    
+                    <!-- 🌟 ส่วนเคลียร์บิลตามช่วงวันที่กำลังเลือก (Selective Range Wipe) 🌟 -->
+                    <label id="ownerClearRangeSalesContainer" class="hidden flex items-center gap-2 text-xs font-bold text-red-700 bg-white p-2.5 rounded-xl border border-red-200 cursor-pointer mt-2 shadow-sm select-none">
+                        <input type="checkbox" id="clearRangeSalesCheckbox" onchange="appAdmin.onClearRangeSalesCheckboxChange(this)" class="w-4 h-4 text-red-600 rounded cursor-pointer">
+                        <span id="clearRangeSalesText">ล้างยอดขายเฉพาะของช่วงวันที่กำลังเลือก</span>
+                    </label>
+                    
+                    <p class="text-[10px] text-red-700 mt-2 leading-relaxed" id="clearDataModalHint">
+                        วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”
                     </p>
                 </div>
             </div>
@@ -840,7 +883,81 @@
             <div id="tableActionButtons" class="space-y-3"></div>
         </div>
     </div>
-    <div id="qrModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"><div class="bg-white w-full max-w-md rounded-3xl p-6 text-center relative shadow-2xl max-h-[92vh] overflow-y-auto"><button onclick="document.getElementById('qrModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full w-8 h-8 font-bold">✕</button><h2 class="text-xl font-bold text-gray-800 mb-1">ชำระเงิน โต๊ะ <span id="qrTableNo" class="text-blue-600">A1</span></h2><div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 my-4 text-left space-y-2"><div class="flex justify-between text-sm text-slate-500"><span>ยอดก่อนส่วนลด</span><b id="checkoutSubtotal" class="text-slate-800">฿0</b></div><div id="checkoutDiscountLine" class="hidden flex justify-between text-sm text-red-500"><span>ส่วนลด</span><b id="checkoutDiscountAmount">-฿0</b></div><div class="flex justify-between border-t border-dashed border-slate-200 pt-2"><span class="font-bold text-slate-700">ยอดสุทธิที่ต้องชำระ</span><b class="text-3xl font-bold text-green-600" id="qrTotalAmount">฿0</b></div></div><div id="discountBox" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-left"><div class="flex justify-between items-center mb-2"><p class="text-sm font-bold text-amber-900"><i class="fa-solid fa-tags mr-1"></i> ส่วนลดท้ายบิล</p><span id="discountPermissionBadge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">ตรวจสิทธิ์...</span></div><div class="grid grid-cols-[1fr_1.3fr] gap-2"><select id="discountType" onchange="calculateDiscountPreview()" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"><option value="amount">ลดเป็นบาท</option><option value="percent">ลดเป็น %</option></select><input id="discountValue" type="number" min="0" value="0" oninput="calculateDiscountPreview()" placeholder="จำนวนส่วนลด" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"></div><input id="discountReason" type="text" placeholder="เหตุผล เช่น ลูกค้าประจำ / เคลม / โปรโมชัน" class="mt-2 w-full p-2 rounded-xl border border-amber-200 bg-white text-sm"><p id="discountHint" class="text-[10px] text-amber-700 mt-2 leading-relaxed">ต้องมีสิทธิ์ “อนุมัติส่วนลดท้ายบิล” จึงจะใส่ส่วนลดได้</p></div><div id="promptPayQrBox" class="bg-blue-50 p-4 rounded-2xl mb-6 inline-block border-2 border-blue-200 shadow-inner"><img id="promptPayQrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP" alt="QR Code" class="w-48 h-48 mx-auto rounded-xl"><p id="promptPayQrLabel" class="text-xs text-blue-500 mt-2 font-bold"><i class="fa-solid fa-qrcode mr-1"></i> สแกนเพื่อจ่าย</p></div><div class="grid grid-cols-2 gap-3"><button onclick="confirmPayment('cash')" class="bg-green-100 text-green-700 py-3 rounded-xl font-bold border border-green-300 active:scale-95"><i class="fa-solid fa-money-bill-wave mr-1"></i> รับเงินสด</button><button onclick="confirmPayment('transfer')" class="bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95"><i class="fa-solid fa-money-check-dollar mr-1"></i> โอนแล้ว</button></div></div></div>
+    
+    <!-- 🔄 Modal สำหรับย้ายโต๊ะ / รวมบิล -->
+    <div id="moveTableModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h2 class="text-xl font-bold text-slate-800"><i class="fa-solid fa-arrows-spin text-teal-600 mr-1.5"></i>ย้ายโต๊ะ / รวมบิล</h2>
+                <button onclick="document.getElementById('moveTableModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 font-bold text-xl w-8 h-8">✕</button>
+            </div>
+            <p class="text-xs text-slate-500 mb-3">ย้ายรายการอาหารและออเดอร์ของ <span class="font-bold text-blue-600" id="moveTableFromLabel">...</span> ไปยังโต๊ะปลายทาง (ถ้าโต๊ะปลายทางมีลูกค้าอยู่แล้ว ระบบจะเปิดให้รวมบิลเข้าด้วยกันได้)</p>
+            <div id="moveTableGrid" class="flex-1 overflow-y-auto grid grid-cols-3 gap-3 p-2 my-2 min-h-[180px]"></div>
+            <div class="mt-4 pt-3 border-t flex justify-end">
+                <button onclick="document.getElementById('moveTableModal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-sm hover:bg-slate-50 active:scale-95 transition-all">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+    <div id="qrModal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] flex items-center justify-center p-4"><div class="bg-white w-full max-w-md rounded-3xl p-6 text-center relative shadow-2xl max-h-[92vh] overflow-y-auto"><button onclick="document.getElementById('qrModal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 bg-gray-100 rounded-full w-8 h-8 font-bold">✕</button><h2 class="text-xl font-bold text-gray-800 mb-1">ชำระเงิน โต๊ะ <span id="qrTableNo" class="text-blue-600">A1</span></h2><div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 my-4 text-left space-y-2"><div class="flex justify-between text-sm text-slate-500"><span>ยอดก่อนส่วนลด</span><b id="checkoutSubtotal" class="text-slate-800">฿0</b></div><div id="checkoutDiscountLine" class="hidden flex justify-between text-sm text-red-500"><span>ส่วนลด</span><b id="checkoutDiscountAmount">-฿0</b></div><div class="flex justify-between border-t border-dashed border-slate-200 pt-2"><span class="font-bold text-slate-700">ยอดสุทธิที่ต้องชำระ</span><b class="text-3xl font-bold text-green-600" id="qrTotalAmount">฿0</b></div></div><div id="discountBox" class="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-left"><div class="flex justify-between items-center mb-2"><p class="text-sm font-bold text-amber-900"><i class="fa-solid fa-tags mr-1"></i> ส่วนลดท้ายบิล</p><span id="discountPermissionBadge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-amber-100 text-amber-700">ตรวจสิทธิ์...</span></div><div class="grid grid-cols-[1fr_1.3fr] gap-2"><select id="discountType" onchange="calculateDiscountPreview()" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"><option value="amount">ลดเป็นบาท</option><option value="percent">ลดเป็น %</option></select><input id="discountValue" type="number" min="0" value="0" oninput="calculateDiscountPreview()" placeholder="จำนวนส่วนลด" class="p-2 rounded-xl border border-amber-200 bg-white text-sm"></div><input id="discountReason" type="text" placeholder="เหตุผล เช่น ลูกค้าประจำ / เคลม / โปรโมชัน" class="mt-2 w-full p-2 rounded-xl border border-amber-200 bg-white text-sm"><p id="discountHint" class="text-[10px] text-amber-700 mt-2 leading-relaxed">ต้องมีสิทธิ์ “อนุมัติส่วนลดท้ายบิล” จึงจะใส่ส่วนลดได้</p></div><div id="promptPayQrBox" class="bg-blue-50 p-4 rounded-2xl mb-6 inline-block border-2 border-blue-200 shadow-inner"><img id="promptPayQrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=PROMPTPAY_MOCKUP" alt="QR Code" class="w-48 h-48 mx-auto rounded-xl"><p id="promptPayQrLabel" class="text-xs text-blue-500 mt-2 font-bold"><i class="fa-solid fa-qrcode mr-1"></i> สแกนเพื่อจ่าย</p></div><div class="grid grid-cols-3 gap-2"><button onclick="confirmPayment('cash')" class="bg-green-100 text-green-700 py-3 rounded-xl font-bold border border-green-300 active:scale-95 text-xs"><i class="fa-solid fa-money-bill-wave mr-1"></i> รับเงินสด</button><button onclick="confirmPayment('transfer')" class="bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg active:scale-95 text-xs"><i class="fa-solid fa-qrcode mr-1"></i> โอนเงิน</button><button onclick="confirmPayment('credit')" class="bg-orange-100 text-orange-700 py-3 rounded-xl font-bold border border-orange-300 active:scale-95 text-xs"><i class="fa-solid fa-credit-card mr-1"></i> บัตรเครดิต</button></div></div></div>
+    <!-- 🌟 Modal: เมนูกันเหนียว (Custom Item Dialog) 🌟 -->
+    <div id="customItemModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center">
+        <div class="bg-white w-full sm:max-w-md rounded-t-[32px] p-6 max-h-[90vh] flex flex-col mx-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-teal-800"><i class="fa-solid fa-circle-plus mr-1"></i> เมนูกันเหนียว (ใส่เอง)</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">ใช้ระบุเมนูพิเศษที่ไม่มีในระบบหรือพนักงานคีย์ไม่ทัน</p>
+                </div>
+                <button onclick="window.closeCustomItemModal()" class="p-2 bg-slate-100 rounded-full text-slate-500 w-8 h-8 flex items-center justify-center font-bold">✕</button>
+            </div>
+            
+            <div class="space-y-4 mb-6 flex-1 overflow-y-auto pr-1">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 block">ชื่อรายการอาหาร/เครื่องดื่ม <span class="text-red-500">*</span></label>
+                    <input type="text" id="customItemName" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="ระบุชื่อรายการ เช่น แกงส้มปลาใบกะเพรา" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-semibold text-slate-800">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 mb-1.5 block">ราคาต่อชิ้น (บาท) <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">฿</span>
+                            <input type="number" id="customItemPrice" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="0" min="0" class="w-full pl-7 pr-3 p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-bold text-slate-800">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 mb-1.5 block">แผนกทำอาหาร <span class="text-red-500">*</span></label>
+                        <select id="customItemCategory" class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 font-semibold text-slate-700 cursor-pointer">
+                            <option value="Food">🍲 ครัวร้อน (Food)</option>
+                            <option value="Beverage">🥤 บาร์น้ำ (Beverage)</option>
+                            <option value="Dessert">🍰 ของหวาน (Dessert)</option>
+                            <option value="อีเว้นต์">🎉 อีเว้นต์ (Event)</option>
+                            <option value="อื่นๆ">📦 อื่นๆ (Other)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 block">หมายเหตุเพิ่มเติม</label>
+                    <input type="text" id="customItemNote" onkeypress="if(event.key === 'Enter') window.confirmCustomItemAndAdd()" placeholder="เช่น เผ็ดน้อย, หวาน 50%, แยกน้ำ..." class="w-full p-3 rounded-xl border border-slate-300 bg-slate-50 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500">
+                </div>
+
+                <!-- Quantity Selector inside Custom Item Modal -->
+                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 mt-2">
+                    <span class="text-sm font-bold text-slate-700">จำนวนที่สั่ง:</span>
+                    <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                        <button type="button" onclick="window.changeCustomItemQty(-1)" class="text-xl font-bold text-slate-400 w-8 active:scale-90 transition-all">-</button>
+                        <span id="customItemQtyDisplay" class="font-extrabold w-8 text-center text-base text-slate-800">1</span>
+                        <button type="button" onclick="window.changeCustomItemQty(1)" class="text-xl font-bold text-teal-600 w-8 active:scale-90 transition-all">+</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button onclick="window.confirmCustomItemAndAdd()" class="w-full bg-teal-600 hover:bg-teal-700 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all">
+                💾 เพิ่มลงตะกร้า
+            </button>
+        </div>
+    </div>
+
     <div id="optionModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-end justify-center">
         <div class="bg-white w-full sm:max-w-xl rounded-t-[32px] p-6 max-h-[90vh] flex flex-col mx-auto">
             <div class="flex justify-between items-start mb-4">
@@ -851,6 +968,17 @@
                 <button onclick="closeOptionModal()" class="p-2 bg-gray-100 rounded-full text-gray-500 w-8 h-8 flex items-center justify-center font-bold">✕</button>
             </div>
             <div id="optionsContainer" class="flex-1 overflow-y-auto mb-4 pb-4"></div>
+            
+            <!-- Quantity Selector inside Option Modal -->
+            <div class="flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-200 mb-3">
+                <span class="text-sm font-bold text-slate-700">จำนวนที่สั่ง:</span>
+                <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+                    <button type="button" onclick="window.changeOptionQty(-1)" class="text-xl font-bold text-slate-400 w-8 active:scale-90 transition-all">-</button>
+                    <span id="optQtyDisplay" class="font-extrabold w-8 text-center text-base text-slate-800">1</span>
+                    <button type="button" onclick="window.changeOptionQty(1)" class="text-xl font-bold text-blue-500 w-8 active:scale-90 transition-all">+</button>
+                </div>
+            </div>
+            
             <button onclick="confirmOptionsAndAdd()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95">เพิ่มลงตะกร้า</button>
         </div>
     </div>
@@ -956,11 +1084,11 @@
     <!-- ========================================== -->
     <!-- Scripts & Logic -->
     <!-- ========================================== -->
-    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js"></script>
-    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js"></script>
-    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js"></script>
-    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js"></script>
-    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js"></script>
-    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js"></script>
+    <script src="./โค้ดระบบ/01_ตั้งค่าและตัวช่วยกลาง.js?v=9.9.9.17"></script>
+    <script src="./โค้ดระบบ/02_หลังบ้านจัดการร้าน.js?v=9.9.9.17"></script>
+    <script src="./โค้ดระบบ/03_รับออเดอร์และตะกร้า.js?v=9.9.9.17"></script>
+    <script src="./โค้ดระบบ/04_ล็อกอินและสิทธิ์.js?v=9.9.9.17"></script>
+    <script src="./โค้ดระบบ/05_โต๊ะครัวสถานะแคชเชียร์.js?v=9.9.9.17"></script>
+    <script src="./โค้ดระบบ/06_รายงานยอดขายและส่งออกไฟล์.js?v=9.9.9.17"></script>
 </body>
 </html>
