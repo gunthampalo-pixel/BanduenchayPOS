@@ -385,12 +385,17 @@
 
         window.exportSalesItemsCSV = function() {
             if(!window.currentPaidOrders || window.currentPaidOrders.length === 0) return alert("⚠️ ไม่มีข้อมูลยอดขายสำหรับดาวน์โหลดครับ");
-            let csvContent = "\uFEFF";
             
-            // Header
-            csvContent += "วันที่ (YYYY-MM-DD),ปี,เดือน,วัน,ชั่วโมง,วันในสัปดาห์,เวลา,รหัสบิล,ประเภทออเดอร์,โต๊ะ,วิธีชำระเงิน,แคชเชียร์,รหัสเมนู,หมวดหมู่หลัก,หมวดหมู่ย่อย,ชื่อเมนูหลัก,รูปแบบ (ร้อน/เย็น/ไซส์),ท็อปปิ้ง,จำนวน,ราคาต่อชิ้น,ราคารวมสินค้า (ก่อนลด),ส่วนลดเฉลี่ยลงสินค้า,ยอดรวมสุทธิสินค้า,เหตุผลส่วนลด,หมายเหตุเพิ่มเติม\n";
-            
-            const safeString = (val) => `"${(val || '-').toString().replace(/"/g, '""')}"`;
+            // Rows array for Excel/CSV
+            const rows = [
+                [
+                    "วันที่ (YYYY-MM-DD)", "ปี", "เดือน", "วัน", "ชั่วโมง", "วันในสัปดาห์", "เวลา", 
+                    "รหัสบิล", "ประเภทออเดอร์", "โต๊ะ", "วิธีชำระเงิน", "แคชเชียร์", 
+                    "รหัสเมนู", "หมวดหมู่หลัก", "หมวดหมู่ย่อย", "ชื่อเมนูหลัก", "รูปแบบ (ร้อน/เย็น/ไซส์)", "ท็อปปิ้ง", 
+                    "จำนวน", "ราคาต่อชิ้น", "ราคารวมสินค้า (ก่อนลด)", "ส่วนลดเฉลี่ยลงสินค้า", "ยอดรวมสุทธิสินค้า", 
+                    "เหตุผลส่วนลด", "หมายเหตุเพิ่มเติม"
+                ]
+            ];
             
             window.currentPaidOrders.forEach(order => {
                 const dateObj = new Date(order.timestamp);
@@ -449,13 +454,6 @@
                         rawKey = refMenu ? refMenu._key : (rawKey || '-');
                     }
 
-                    let safeMenuKey = "";
-                    if (rawKey.startsWith('-') || rawKey.startsWith('=')) {
-                        safeMenuKey = `"=""${rawKey.replace(/"/g, '""')}"""`;
-                    } else {
-                        safeMenuKey = `"${rawKey.replace(/"/g, '""')}"`;
-                    }
-
                     let tableLabel = order.tableNo || '-';
                     if (order.orderType === 'Dine-in') {
                         if (!tableLabel.startsWith('โต๊ะ')) {
@@ -465,47 +463,67 @@
                         tableLabel = order.orderType === 'Takeaway' ? 'กลับบ้าน' : 'เดลิเวอรี่';
                     }
 
-                    let row = [
+                    rows.push([
                         isoDate,
                         dateObj.getFullYear(),
                         dateObj.getMonth() + 1,
                         dateObj.getDate(),
                         dateObj.getHours(),
-                        safeString(weekdayStr),
+                        weekdayStr,
                         timeStr,
-                        safeString(order.orderId),
-                        safeString(order.orderType),
-                        safeString(tableLabel),
-                        safeString(order.paymentMethod),
-                        safeString(order.staffName || order.cashierName),
-                        safeMenuKey,
-                        safeString(mainCategory),
-                        safeString(subCategory),
-                        safeString(baseMenuName),
-                        safeString(variant),
-                        safeString(toppings),
-                        item.qty,
-                        pricePerUnit,
-                        item.totalPrice,
-                        allocatedDiscount,
-                        netItemPrice,
-                        safeString(order.discount?.reason || '-'),
-                        safeString(item.note || '-')
-                    ];
-                    csvContent += row.join(",") + "\n";
+                        order.orderId || '-',
+                        order.orderType || '-',
+                        tableLabel,
+                        order.paymentMethod || '-',
+                        order.staffName || order.cashierName || '-',
+                        rawKey,
+                        mainCategory,
+                        subCategory,
+                        baseMenuName,
+                        variant,
+                        toppings,
+                        Number(item.qty || 0),
+                        Number(pricePerUnit),
+                        Number(item.totalPrice || 0),
+                        Number(allocatedDiscount),
+                        Number(netItemPrice),
+                        order.discount?.reason || '-',
+                        item.note || '-'
+                    ]);
                 });
             });
             
-            window.downloadCSVFile(csvContent);
+            window.downloadXLSXFile(rows);
         };
 
-        window.downloadCSVFile = function(csvContent) {
+        window.downloadXLSXFile = function(rows) {
             const startVal = document.getElementById('salesDateStart')?.value;
             const endVal = document.getElementById('salesDateEnd')?.value;
             const exportDateStr = (startVal && endVal) 
                 ? (startVal === endVal ? startVal : `${startVal}_ถึง_${endVal}`)
                 : new Date().toISOString().split('T')[0];
 
+            try {
+                if (typeof XLSX === 'undefined') {
+                    throw new Error("ระบบ XLSX ยังโหลดไม่เสร็จ กรุณารอสักครู่หรือดาวน์โหลดแบบ CSV แทนครับ");
+                }
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, "ยอดขายรายสินค้า");
+                XLSX.writeFile(wb, `สรุปยอดขาย_BDC_${exportDateStr}.xlsx`);
+            } catch (e) {
+                console.error(e);
+                alert("❌ ไม่สามารถดาวน์โหลดเป็น .xlsx ได้: " + e.message + "\nระบบจะสลับไปดาวน์โหลดแบบ CSV ให้แทนครับ");
+                window.downloadCSVFallback(rows, exportDateStr);
+            }
+        };
+
+        window.downloadCSVFallback = function(rows, exportDateStr) {
+            let csvContent = "\uFEFF";
+            rows.forEach(r => {
+                const safeRow = r.map(val => `"${(val || '-').toString().replace(/"/g, '""')}"`);
+                csvContent += safeRow.join(",") + "\n";
+            });
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); 
             const url = URL.createObjectURL(blob); 
             const link = document.createElement("a"); 
