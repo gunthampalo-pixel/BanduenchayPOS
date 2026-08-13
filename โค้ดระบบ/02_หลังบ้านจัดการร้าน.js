@@ -376,7 +376,8 @@
 
                     const cutoffDate = getCleanupCutoffDate();
                     const cutoffTime = cutoffDate.getTime();
-                    const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
+                    const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
+                    const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน (ข้อมูลที่เก่ากว่าวันที่ ${cutoffFormat})\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
                     if (!okToDelete) return;
 
                     const btn = document.getElementById('btnConfirmClear');
