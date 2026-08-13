@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BDC POS - Premium Business Intelligence Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-12">
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-xl shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-chart-line text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-wide">BDC POS</h1>
+                    <p class="text-xs text-slate-400">Business Intelligence Dashboard</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                    <i class="fa-solid fa-calendar-day mr-1.5"></i>วิเคราะห์ข้อมูลจากไฟล์จริง
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 mt-8">
+        <!-- KPI Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Revenue -->
+            <div class="glass-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">ยอดขายรวมทั้งหมด</p>
+                    <h3 class="text-3xl font-extrabold mt-1 text-emerald-400">฿100,163.00</h3>
+                </div>
+                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+            </div>
+            <!-- Orders -->
+            <div class="glass-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">จำนวนบิลขาย</p>
+                    <h3 class="text-3xl font-extrabold mt-1 text-sky-400">174 บิล</h3>
+                </div>
+                <div class="w-12 h-12 bg-sky-500/10 text-sky-400 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-receipt"></i>
+                </div>
+            </div>
+            <!-- Total Items -->
+            <div class="glass-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">จำนวนสินค้าที่ขายได้</p>
+                    <h3 class="text-3xl font-extrabold mt-1 text-violet-400">779 ชิ้น</h3>
+                </div>
+                <div class="w-12 h-12 bg-violet-500/10 text-violet-400 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+            </div>
+            <!-- Avg Order Value -->
+            <div class="glass-card p-6 rounded-2xl flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">ยอดขายเฉลี่ยต่อบิล (AOV)</p>
+                    <h3 class="text-3xl font-extrabold mt-1 text-amber-400">฿575.65</h3>
+                </div>
+                <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-xl flex items-center justify-center text-xl">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1: Sales trends -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <!-- Line Chart Daily Sales -->
+            <div class="glass-card p-6 rounded-2xl lg:col-span-2">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-chart-area mr-2 text-indigo-400"></i>แนวโน้มยอดขายรายวัน (Daily Sales Trend)</h4>
+                <div class="h-80">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+            </div>
+            <!-- Doughnut Chart Payment Methods -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-credit-card mr-2 text-indigo-400"></i>สัดส่วนการชำระเงิน (Payment Breakdown)</h4>
+                <div class="h-80 flex items-center justify-center">
+                    <canvas id="paymentChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2: Hourly and Categories -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <!-- Peak Hours Bar Chart -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-clock mr-2 text-indigo-400"></i>วิเคราะห์ช่วงเวลาขายดี (Peak Hours)</h4>
+                <div class="h-80">
+                    <canvas id="hourlyChart"></canvas>
+                </div>
+            </div>
+            <!-- Horizontal Bar Chart Top Items -->
+            <div class="glass-card p-6 rounded-2xl lg:col-span-2">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-fire mr-2 text-rose-400"></i>10 อันดับสินค้าขายดีที่สุด (Top 10 Best Sellers)</h4>
+                <div class="h-80">
+                    <canvas id="topItemsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Row: Cashier and Categories summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <!-- Category Revenue Table -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-filter mr-2 text-indigo-400"></i>ยอดขายตามหมวดหมู่</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-400">
+                        <thead class="text-xs uppercase bg-slate-800 text-slate-300">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">หมวดหมู่</th>
+                                <th scope="col" class="px-4 py-3 text-right">ยอดรวม</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Beverage</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿21,955.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Desserts</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿8,295.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">None</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿30,498.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">อาหารจานเดียว</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿7,570.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">กับข้าว</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿21,010.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Options</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿625.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Set</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿9,310.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Food</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿225.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">สินค้าอบแห้ง</td>
+                                <td class="px-4 py-3 text-right text-emerald-400 font-bold">฿675.00</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cashier Table -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-user-tie mr-2 text-indigo-400"></i>ผลงานพนักงานแคชเชียร์</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-slate-400">
+                        <thead class="text-xs uppercase bg-slate-800 text-slate-300">
+                            <tr>
+                                <th scope="col" class="px-4 py-3">พนักงาน</th>
+                                <th scope="col" class="px-4 py-3 text-center">จำนวนบิล</th>
+                                <th scope="col" class="px-4 py-3 text-right">ยอดขายรวม</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Pan</td>
+                                <td class="px-4 py-3 text-center">75</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿53,878.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">เพ็ญ</td>
+                                <td class="px-4 py-3 text-center">70</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿24,365.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Boom</td>
+                                <td class="px-4 py-3 text-center">3</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿775.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Bis04</td>
+                                <td class="px-4 py-3 text-center">4</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿985.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">Gun</td>
+                                <td class="px-4 py-3 text-center">18</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿18,605.00</td>
+                            </tr>
+                            
+                            <tr class="hover:bg-slate-800/50">
+                                <td class="px-4 py-3 font-semibold text-slate-200">ณี</td>
+                                <td class="px-4 py-3 text-center">4</td>
+                                <td class="px-4 py-3 text-right text-sky-400 font-bold">฿1,555.00</td>
+                            </tr>
+                            
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Last 10 bills list -->
+            <div class="glass-card p-6 rounded-2xl">
+                <h4 class="text-sm font-bold text-slate-300 mb-4"><i class="fa-solid fa-history mr-2 text-indigo-400"></i>ประวัติบิลขายล่าสุด (10 บิลล่าสุด)</h4>
+                <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-52593</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:17 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿170.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-26623</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:17 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿270.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-77063</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:16 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿155.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-37080</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:15 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿320.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-78425</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:14 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿500.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-99947</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:14 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿160.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-83552</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:13 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿645.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">cash</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-14411</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:13 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿255.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-34736</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:12 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿365.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/30 flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-indigo-400">B-98003</span>
+                            <div class="text-[10px] text-slate-400 mt-0.5">2026-06-14 19:10 • Pan</div>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-bold text-emerald-400">฿230.00</span>
+                            <div class="text-[9px] text-slate-500 uppercase font-semibold mt-0.5">transfer</div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const dashboardData = {"total_revenue": 100163.0, "total_orders": 174, "total_items": 779, "avg_order": 575.6494252873563, "daily_sales": [{"date": "2026-06-05", "revenue": 11225.0}, {"date": "2026-06-06", "revenue": 18070.0}, {"date": "2026-06-07", "revenue": 7795.0}, {"date": "2026-06-08", "revenue": 18923.0}, {"date": "2026-06-11", "revenue": 13719.0}, {"date": "2026-06-12", "revenue": 3980.0}, {"date": "2026-06-13", "revenue": 10251.0}, {"date": "2026-06-14", "revenue": 16200.0}], "hourly_sales": [{"hour": "00:00", "revenue": 0}, {"hour": "01:00", "revenue": 0}, {"hour": "02:00", "revenue": 0}, {"hour": "03:00", "revenue": 0}, {"hour": "04:00", "revenue": 0}, {"hour": "05:00", "revenue": 0}, {"hour": "06:00", "revenue": 0}, {"hour": "07:00", "revenue": 0}, {"hour": "08:00", "revenue": 0}, {"hour": "09:00", "revenue": 0}, {"hour": "10:00", "revenue": 1775.0}, {"hour": "11:00", "revenue": 3500.0}, {"hour": "12:00", "revenue": 2910.0}, {"hour": "13:00", "revenue": 18260.0}, {"hour": "14:00", "revenue": 27043.0}, {"hour": "15:00", "revenue": 4940.0}, {"hour": "16:00", "revenue": 6960.0}, {"hour": "17:00", "revenue": 5063.0}, {"hour": "18:00", "revenue": 11320.0}, {"hour": "19:00", "revenue": 13117.0}, {"hour": "20:00", "revenue": 5275.0}, {"hour": "21:00", "revenue": 0}, {"hour": "22:00", "revenue": 0}, {"hour": "23:00", "revenue": 0}], "payments": [{"method": "transfer", "revenue": 71064.0}, {"method": "cash", "revenue": 9823.0}, {"method": "credit", "revenue": 19276.0}], "top_items": [{"name": "\u0e19\u0e49\u0e33\u0e14\u0e37\u0e48\u0e21", "qty": 50, "revenue": 500.0, "cat": "Options"}, {"name": "\u0e02\u0e49\u0e32\u0e27\u0e40\u0e1b\u0e25\u0e48\u0e32", "qty": 44, "revenue": 1360.0, "cat": "None"}, {"name": "\u0e0a\u0e32\u0e40\u0e02\u0e35\u0e22\u0e27\u0e19\u0e21", "qty": 22, "revenue": 1560.0, "cat": "Beverage"}, {"name": "\u0e2a\u0e15\u0e23\u0e2d\u0e40\u0e1a\u0e2d\u0e23\u0e4c\u0e23\u0e35\u0e48\u0e04\u0e23\u0e31\u0e21\u0e40\u0e1a\u0e34\u0e49\u0e25", "qty": 20, "revenue": 1700.0, "cat": "Desserts"}, {"name": "\u0e0a\u0e32\u0e40\u0e02\u0e35\u0e22\u0e27\u0e21\u0e31\u0e17\u0e09\u0e30 / \u0e21\u0e31\u0e17\u0e09\u0e30\u0e25\u0e32\u0e40\u0e15\u0e49", "qty": 19, "revenue": 1615.0, "cat": "Beverage"}, {"name": "\u0e0b\u0e2d\u0e1f\u0e15\u0e4c \u0e04\u0e38\u0e49\u0e01\u0e01\u0e35\u0e49", "qty": 18, "revenue": 810.0, "cat": "Desserts"}, {"name": "\u0e1b\u0e39\u0e2d\u0e31\u0e14-\u0e0a\u0e35\u0e2a", "qty": 16, "revenue": 560.0, "cat": "Desserts"}, {"name": "\u0e0a\u0e47\u0e2d\u0e01\u0e42\u0e01\u0e41\u0e25\u0e15", "qty": 14, "revenue": 980.0, "cat": "Beverage"}, {"name": "Set \u0e02\u0e49\u0e32\u0e27\u0e15\u0e31\u0e07+\u0e0a\u0e32\u0e1d\u0e32\u0e07\u0e40\u0e01\u0e47\u0e01\u0e2e\u0e27\u0e22", "qty": 14, "revenue": 2590.0, "cat": "Set"}, {"name": "\u0e1c\u0e31\u0e01\u0e42\u0e02\u0e21-\u0e0a\u0e35\u0e2a", "qty": 13, "revenue": 455.0, "cat": "Desserts"}, {"name": "\u0e2d\u0e40\u0e21\u0e23\u0e34\u0e01\u0e32\u0e42\u0e19\u0e48", "qty": 12, "revenue": 840.0, "cat": "Beverage"}, {"name": "\u0e04\u0e31\u0e2a\u0e15\u0e32\u0e23\u0e4c\u0e14\u0e04\u0e32\u0e23\u0e32\u0e40\u0e21\u0e25", "qty": 12, "revenue": 780.0, "cat": "Desserts"}, {"name": "\u0e42\u0e1a\u0e42\u0e25\u0e40\u0e1b\u0e32\u0e0a\u0e47\u0e2d\u0e04\u0e42\u0e01\u0e41\u0e25\u0e15", "qty": 12, "revenue": 660.0, "cat": "Desserts"}, {"name": "\u0e41\u0e15\u0e07\u0e42\u0e21\u0e1b\u0e31\u0e48\u0e19", "qty": 10, "revenue": 850.0, "cat": "Beverage"}, {"name": "\u0e42\u0e01\u0e42\u0e01\u0e49", "qty": 10, "revenue": 720.0, "cat": "Beverage"}], "categories": [{"category": "Beverage", "revenue": 21955.0}, {"category": "Desserts", "revenue": 8295.0}, {"category": "None", "revenue": 30498.0}, {"category": "\u0e2d\u0e32\u0e2b\u0e32\u0e23\u0e08\u0e32\u0e19\u0e40\u0e14\u0e35\u0e22\u0e27", "revenue": 7570.0}, {"category": "\u0e01\u0e31\u0e1a\u0e02\u0e49\u0e32\u0e27", "revenue": 21010.0}, {"category": "Options", "revenue": 625.0}, {"category": "Set", "revenue": 9310.0}, {"category": "Food", "revenue": 225.0}, {"category": "\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e2d\u0e1a\u0e41\u0e2b\u0e49\u0e07", "revenue": 675.0}], "cashiers": [{"cashier": "Pan", "revenue": 53878.0, "bills": 75}, {"cashier": "\u0e40\u0e1e\u0e47\u0e0d", "revenue": 24365.0, "bills": 70}, {"cashier": "Boom", "revenue": 775.0, "bills": 3}, {"cashier": "Bis04", "revenue": 985.0, "bills": 4}, {"cashier": "Gun", "revenue": 18605.0, "bills": 18}, {"cashier": "\u0e13\u0e35", "revenue": 1555.0, "bills": 4}], "orders": [{"id": "B-52593", "date": "2026-06-14", "time": "19:17", "amount": 170.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-26623", "date": "2026-06-14", "time": "19:17", "amount": 270.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-77063", "date": "2026-06-14", "time": "19:16", "amount": 155.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-37080", "date": "2026-06-14", "time": "19:15", "amount": 320.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-78425", "date": "2026-06-14", "time": "19:14", "amount": 500.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-99947", "date": "2026-06-14", "time": "19:14", "amount": 160.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-83552", "date": "2026-06-14", "time": "19:13", "amount": 645.0, "method": "cash", "cashier": "Pan"}, {"id": "B-14411", "date": "2026-06-14", "time": "19:13", "amount": 255.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-34736", "date": "2026-06-14", "time": "19:12", "amount": 365.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-98003", "date": "2026-06-14", "time": "19:10", "amount": 230.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-47073", "date": "2026-06-14", "time": "19:10", "amount": 1695.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-36612", "date": "2026-06-14", "time": "18:58", "amount": 2030.0, "method": "credit", "cashier": "Pan"}, {"id": "B-90172", "date": "2026-06-14", "time": "18:43", "amount": 1780.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-29119", "date": "2026-06-14", "time": "18:39", "amount": 120.0, "method": "cash", "cashier": "Pan"}, {"id": "B-68255", "date": "2026-06-14", "time": "18:39", "amount": 325.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-68259", "date": "2026-06-14", "time": "14:56", "amount": 800.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-73806", "date": "2026-06-14", "time": "14:44", "amount": 260.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-00819", "date": "2026-06-14", "time": "14:40", "amount": 235.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-31642", "date": "2026-06-14", "time": "14:07", "amount": 935.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-26287", "date": "2026-06-14", "time": "14:05", "amount": 250.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-92682", "date": "2026-06-14", "time": "14:03", "amount": 885.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-48395", "date": "2026-06-14", "time": "13:57", "amount": 1565.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-50077", "date": "2026-06-14", "time": "13:51", "amount": 1705.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-33023", "date": "2026-06-14", "time": "11:38", "amount": 270.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-26135", "date": "2026-06-14", "time": "11:20", "amount": 275.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-67747", "date": "2026-06-13", "time": "19:42", "amount": 270.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-71044", "date": "2026-06-13", "time": "19:24", "amount": 4276.0, "method": "credit", "cashier": "Pan"}, {"id": "B-44833", "date": "2026-06-13", "time": "19:15", "amount": 165.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-91656", "date": "2026-06-13", "time": "19:13", "amount": 225.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-74549", "date": "2026-06-13", "time": "19:10", "amount": 500.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-57204", "date": "2026-06-13", "time": "18:07", "amount": 280.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-14823", "date": "2026-06-13", "time": "17:38", "amount": 70.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-70050", "date": "2026-06-13", "time": "16:47", "amount": 375.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-68912", "date": "2026-06-13", "time": "16:14", "amount": 70.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-57201", "date": "2026-06-13", "time": "16:07", "amount": 140.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-98070", "date": "2026-06-13", "time": "16:06", "amount": 70.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-79323", "date": "2026-06-13", "time": "16:06", "amount": 540.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-36749", "date": "2026-06-13", "time": "16:02", "amount": 540.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-15617", "date": "2026-06-13", "time": "15:51", "amount": 240.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-14956", "date": "2026-06-13", "time": "15:50", "amount": 210.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-08167", "date": "2026-06-13", "time": "15:27", "amount": 130.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-37810", "date": "2026-06-13", "time": "15:27", "amount": 180.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-41737", "date": "2026-06-13", "time": "14:27", "amount": 200.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-83700", "date": "2026-06-13", "time": "13:57", "amount": 1240.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-07545", "date": "2026-06-13", "time": "12:53", "amount": 10.0, "method": "cash", "cashier": "Pan"}, {"id": "B-82550", "date": "2026-06-13", "time": "12:53", "amount": 90.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-47049", "date": "2026-06-13", "time": "12:27", "amount": 245.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-72443", "date": "2026-06-13", "time": "12:02", "amount": 185.0, "method": "transfer", "cashier": "Boom"}, {"id": "B-48622", "date": "2026-06-12", "time": "18:32", "amount": 150.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-45359", "date": "2026-06-12", "time": "18:30", "amount": 70.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-75900", "date": "2026-06-12", "time": "18:17", "amount": 175.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-02707", "date": "2026-06-12", "time": "17:40", "amount": 335.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-09431", "date": "2026-06-12", "time": "17:03", "amount": 335.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-08530", "date": "2026-06-12", "time": "16:55", "amount": 245.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-90995", "date": "2026-06-12", "time": "16:23", "amount": 75.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-33547", "date": "2026-06-12", "time": "16:08", "amount": 150.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-98023", "date": "2026-06-12", "time": "14:32", "amount": 140.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-67341", "date": "2026-06-12", "time": "14:01", "amount": 235.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-35091", "date": "2026-06-12", "time": "13:24", "amount": 690.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-08920", "date": "2026-06-12", "time": "12:43", "amount": 280.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-03252", "date": "2026-06-12", "time": "12:08", "amount": 295.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-22179", "date": "2026-06-12", "time": "10:47", "amount": 805.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-21923", "date": "2026-06-11", "time": "19:20", "amount": 1821.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-26056", "date": "2026-06-11", "time": "18:35", "amount": 1515.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-51505", "date": "2026-06-11", "time": "18:00", "amount": 485.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-67059", "date": "2026-06-11", "time": "17:58", "amount": 405.0, "method": "cash", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-14921", "date": "2026-06-11", "time": "17:56", "amount": 593.0, "method": "cash", "cashier": "Pan"}, {"id": "B-09425", "date": "2026-06-11", "time": "16:39", "amount": 285.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-70403", "date": "2026-06-11", "time": "16:26", "amount": 235.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-64343", "date": "2026-06-11", "time": "15:41", "amount": 150.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-94345", "date": "2026-06-11", "time": "15:39", "amount": 725.0, "method": "cash", "cashier": "Pan"}, {"id": "B-01337", "date": "2026-06-11", "time": "15:27", "amount": 1125.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-53489", "date": "2026-06-11", "time": "15:27", "amount": 1005.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-73563", "date": "2026-06-11", "time": "15:25", "amount": 195.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-81558", "date": "2026-06-11", "time": "14:32", "amount": 220.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-88531", "date": "2026-06-11", "time": "14:31", "amount": 315.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-34081", "date": "2026-06-11", "time": "14:18", "amount": 120.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-41688", "date": "2026-06-11", "time": "13:59", "amount": 180.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-23461", "date": "2026-06-11", "time": "13:47", "amount": 725.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-99446", "date": "2026-06-11", "time": "13:44", "amount": 155.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-70407", "date": "2026-06-11", "time": "13:41", "amount": 190.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-53597", "date": "2026-06-11", "time": "13:39", "amount": 625.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-78632", "date": "2026-06-11", "time": "13:36", "amount": 225.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-77005", "date": "2026-06-11", "time": "13:28", "amount": 140.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-24156", "date": "2026-06-11", "time": "13:28", "amount": 240.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-52072", "date": "2026-06-11", "time": "13:22", "amount": 940.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-40117", "date": "2026-06-11", "time": "13:12", "amount": 690.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-08744", "date": "2026-06-11", "time": "10:49", "amount": 415.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-96046", "date": "2026-06-08", "time": "20:38", "amount": 405.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-23649", "date": "2026-06-08", "time": "20:37", "amount": 245.0, "method": "transfer", "cashier": "Bis04"}, {"id": "B-82167", "date": "2026-06-08", "time": "20:34", "amount": 335.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-80055", "date": "2026-06-08", "time": "20:34", "amount": 245.0, "method": "transfer", "cashier": "Bis04"}, {"id": "B-45672", "date": "2026-06-08", "time": "20:32", "amount": 415.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-94562", "date": "2026-06-08", "time": "20:31", "amount": 3550.0, "method": "transfer", "cashier": "Pan"}, {"id": "B-07435", "date": "2026-06-08", "time": "20:30", "amount": 80.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-97168", "date": "2026-06-08", "time": "18:51", "amount": 375.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-19553", "date": "2026-06-08", "time": "18:46", "amount": 140.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-92086", "date": "2026-06-08", "time": "18:31", "amount": 245.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-27922", "date": "2026-06-08", "time": "17:45", "amount": 265.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}, {"id": "B-25451", "date": "2026-06-08", "time": "17:42", "amount": 945.0, "method": "transfer", "cashier": "\u0e40\u0e1e\u0e47\u0e0d"}]};
+
+        // 1. Daily Sales Chart
+        const dailyLabels = dashboardData.daily_sales.map(item => item.date);
+        const dailyValues = dashboardData.daily_sales.map(item => item.revenue);
+        new Chart(document.getElementById('dailyChart'), {
+            type: 'line',
+            data: {
+                labels: dailyLabels,
+                datasets: [{
+                    label: 'ยอดขายรายวัน',
+                    data: dailyValues,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#818cf8',
+                    pointBorderColor: '#0f172a',
+                    pointHoverRadius: 7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+
+        // 2. Payment Methods Chart
+        const payLabels = dashboardData.payments.map(item => item.method === 'cash' ? '💵 เงินสด' : item.method === 'transfer' ? '📱 โอนเงิน' : '💳 บัตรเครดิต');
+        const payValues = dashboardData.payments.map(item => item.revenue);
+        new Chart(document.getElementById('paymentChart'), {
+            type: 'doughnut',
+            data: {
+                labels: payLabels,
+                datasets: [{
+                    data: payValues,
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#6b7280'],
+                    borderWidth: 2,
+                    borderColor: '#1e293b'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#cbd5e1', padding: 20 }
+                    }
+                }
+            }
+        });
+
+        // 3. Hourly Sales Chart
+        const hourlyLabels = dashboardData.hourly_sales.map(item => item.hour);
+        const hourlyValues = dashboardData.hourly_sales.map(item => item.revenue);
+        new Chart(document.getElementById('hourlyChart'), {
+            type: 'bar',
+            data: {
+                labels: hourlyLabels,
+                datasets: [{
+                    data: hourlyValues,
+                    backgroundColor: '#818cf8',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } }
+                }
+            }
+        });
+
+        // 4. Top Items Chart
+        const topLabels = dashboardData.top_items.map(item => item.name);
+        const topValues = dashboardData.top_items.map(item => item.qty);
+        new Chart(document.getElementById('topItemsChart'), {
+            type: 'bar',
+            data: {
+                labels: topLabels,
+                datasets: [{
+                    data: topValues,
+                    backgroundColor: 'rgba(244, 63, 94, 0.85)',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { display: false }, ticks: { color: '#cbd5e1', font: { size: 10 } } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

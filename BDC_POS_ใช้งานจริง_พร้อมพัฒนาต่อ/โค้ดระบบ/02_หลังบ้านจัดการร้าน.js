@@ -7,6 +7,67 @@
             editingStaffId: null,
             currentVariants: [],
 
+            populateGroupedCategories: function(selectElement, includeAll = false, defaultValue = '') {
+                if (!selectElement) return;
+                const dbCats = [...new Set(allMenu.map(m => m.Category).filter(Boolean))].sort();
+                
+                const groupedDbCats = {
+                    'อาหาร': [],
+                    'เครื่องดื่ม': [],
+                    'ของหวาน': [],
+                    'เซ็ตเมนู': [],
+                    'อีเว้นต์': [],
+                    'อื่นๆ': []
+                };
+                dbCats.forEach(c => {
+                    const broad = window.getBroadMainCategory(c);
+                    groupedDbCats[broad].push(c);
+                });
+
+                const broadIcons = {
+                    'อาหาร': '🍲',
+                    'เครื่องดื่ม': '🥤',
+                    'ของหวาน': '🍰',
+                    'เซ็ตเมนู': '🍱',
+                    'อีเว้นต์': '🎉',
+                    'อื่นๆ': '📦'
+                };
+
+                let html = '';
+                if (includeAll) {
+                    html += `<option value="All">ทั้งหมด</option>`;
+                }
+
+                Object.keys(groupedDbCats).forEach(broad => {
+                    const catsInBroad = groupedDbCats[broad];
+                    const icon = broadIcons[broad] || '📁';
+                    
+                    if (catsInBroad.length > 0 || broad !== 'อื่นๆ') {
+                        html += `<optgroup label="${icon} ${broad}">`;
+                        html += `<option value="${broad}">${icon} ${broad} (ทั้งหมด)</option>`;
+                        
+                        catsInBroad.forEach(c => {
+                            if (c !== broad) {
+                                html += `<option value="${c}">${c}</option>`;
+                            }
+                        });
+                        html += `</optgroup>`;
+                    }
+                });
+
+                const oldVal = selectElement.value || defaultValue;
+                selectElement.innerHTML = html;
+                
+                const allVals = [];
+                if (includeAll) allVals.push('All');
+                Object.keys(groupedDbCats).forEach(broad => {
+                    allVals.push(broad);
+                    groupedDbCats[broad].forEach(c => allVals.push(c));
+                });
+                
+                selectElement.value = allVals.includes(oldVal) ? oldVal : (includeAll ? 'All' : allVals[0] || '');
+            },
+
             verifyOwnerPin: function(pin) {
                 return String(pin || '').trim() === String(appSettings.ownerPin || '1234').trim();
             },
@@ -80,14 +141,48 @@
                 // เช็คสิทธิ์ก่อน
                 if(!currentUser) return alert("⚠️ กรุณาเข้าสู่ระบบก่อนครับ");
                 let p = currentUser.Permissions || {};
-                const isAdmin = p.admin || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager');
-                if(!isAdmin) return alert("⚠️ เฉพาะผู้จัดการ (Admin) เท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
+                const isOwner = (currentUser.Role || "").toLowerCase().includes('owner') || currentUser.Username === 'owner';
+                const isAdmin = p.admin || p.clear || (currentUser.Role || "").toLowerCase().includes('admin') || (currentUser.Role || "").toLowerCase().includes('manager') || isOwner;
+                if(!isAdmin) return alert("⚠️ เฉพาะผู้ที่มีสิทธิ์ล้างข้อมูลระบบ หรือเจ้าของร้านเท่านั้นที่สามารถล้างข้อมูลระบบได้ครับ");
 
                 document.getElementById('adminClearDataModal').classList.remove('hidden');
                 document.getElementById('dataRangeDisplay').innerText = "กำลังตรวจสอบ...";
                 document.getElementById('oldOrdersCount').innerText = "0";
                 document.getElementById('oldLogsCount').innerText = "0";
                 document.getElementById('clearConfirmPin').value = "";
+
+                // จัดการ Checkbox สำหรับ Owner (แสดงเฉพาะคนที่มีสิทธิ์ล้างข้อมูลระบบ clear หรือ admin)
+                const canClearAll = p.admin === true || p.clear === true;
+                const ownerEl = document.getElementById('ownerClearAllSalesContainer');
+                if (ownerEl) {
+                    if (canClearAll) {
+                        ownerEl.classList.remove('hidden');
+                    } else {
+                        ownerEl.classList.add('hidden');
+                    }
+                }
+                const chk = document.getElementById('clearAllSalesCheckbox');
+                if (chk) chk.checked = false;
+
+                const rangeEl = document.getElementById('ownerClearRangeSalesContainer');
+                const rangeText = document.getElementById('clearRangeSalesText');
+                const startDateVal = document.getElementById('salesDateStart')?.value;
+                const endDateVal = document.getElementById('salesDateEnd')?.value;
+                if (rangeEl && rangeText) {
+                    if (canClearAll && startDateVal && endDateVal) {
+                        rangeEl.classList.remove('hidden');
+                        const startStr = new Date(startDateVal).toLocaleDateString('th-TH');
+                        const endStr = new Date(endDateVal).toLocaleDateString('th-TH');
+                        const dateRangeDisplay = startStr === endStr ? startStr : `${startStr} ถึง ${endStr}`;
+                        rangeText.innerHTML = `ล้างยอดขายเฉพาะช่วงวันที่เลือก (${dateRangeDisplay})`;
+                    } else {
+                        rangeEl.classList.add('hidden');
+                    }
+                }
+                const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                if (chkRange) chkRange.checked = false;
+
+                this.onClearAllSalesCheckboxChange(chk);
 
                 try {
                     const cutoffDate = getCleanupCutoffDate();
@@ -124,75 +219,224 @@
                 document.getElementById('adminClearDataModal').classList.add('hidden');
             },
 
-            executeClearData: async function() {
-                const pin = document.getElementById('clearConfirmPin').value;
-                
-                // 🌟 แก้ปัญหา PIN ที่เป็นตัวเลขในฐานข้อมูลไม่ตรงกับข้อความที่พิมพ์
-                const expectedPin = String(currentUser?.Password ?? currentUser?.PIN ?? "").trim();
-                if(!expectedPin || String(pin).trim() !== expectedPin) {
-                    return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง!");
-                }
-
-                const cutoffDate = getCleanupCutoffDate();
-                const cutoffTime = cutoffDate.getTime();
-                const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
-                if (!okToDelete) return;
-
-                const btn = document.getElementById('btnConfirmClear');
-                const oldText = btn.innerHTML;
-                btn.innerHTML = "⏳ กำลังกวาดลบข้อมูล...";
-                btn.disabled = true;
-
-                try {
-                    const [ordersData, historyData, logsData] = await Promise.all([
-                        fetchFirebaseJson('Orders'),
-                        fetchFirebaseJson('OrderHistory'),
-                        fetchFirebaseJson('AuditLogs')
-                    ]);
-                    
-                    // 1. เคลียร์บิลรูปแบบเก่า ( Orders/ )
-                    const oldOrderKeys = getCleanupKeys(ordersData, cutoffTime, shouldCleanupOrder);
-                    const deletedLegacyCount = await deleteKeysInChunks('Orders', oldOrderKeys);
-                    
-                    // 2. เคลียร์บิลรูปแบบใหม่รายวัน ( OrderHistory/YYYY-MM-DD )
-                    const oldHistoryDates = [];
-                    let deletedHistoryOrdersCount = 0;
-                    for (let dateStr in historyData) {
-                        const time = new Date(dateStr).getTime();
-                        if (!Number.isNaN(time) && time < cutoffTime) {
-                            oldHistoryDates.push(dateStr);
-                            const dayOrders = historyData[dateStr] || {};
-                            deletedHistoryOrdersCount += Object.keys(dayOrders).length;
+            onClearAllSalesCheckboxChange: function(el) {
+                const hint = document.getElementById('clearDataModalHint');
+                if (hint) {
+                    if (el && el.checked) {
+                        const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                        if (chkRange) chkRange.checked = false;
+                        hint.innerHTML = "💡 <b>โหมดล้างยอดทั้งหมด:</b> กรุณากรอก <b>Owner PIN</b> เพื่อยืนยันการเคลียร์ฐานข้อมูลบิลและประวัติทั้งหมด";
+                        hint.classList.add('text-red-700');
+                    } else {
+                        const chkRange = document.getElementById('clearRangeSalesCheckbox');
+                        if (!chkRange || !chkRange.checked) {
+                            hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
+                            hint.classList.remove('text-red-700');
                         }
                     }
-                    if (oldHistoryDates.length > 0) {
-                        const patch = {};
-                        oldHistoryDates.forEach(dateStr => { patch[dateStr] = null; });
-                        await patchFirebase('OrderHistory', patch);
+                }
+            },
+
+            onClearRangeSalesCheckboxChange: function(el) {
+                const hint = document.getElementById('clearDataModalHint');
+                if (hint) {
+                    if (el && el.checked) {
+                        const chkAll = document.getElementById('clearAllSalesCheckbox');
+                        if (chkAll) chkAll.checked = false;
+                        hint.innerHTML = "💡 <b>โหมดล้างยอดตามวันที่เลือก:</b> กรุณากรอก <b>Owner PIN</b> เพื่อยืนยันการล้างข้อมูลยอดขายในช่วงวันดังกล่าว";
+                        hint.classList.add('text-red-700');
+                    } else {
+                        const chkAll = document.getElementById('clearAllSalesCheckbox');
+                        if (!chkAll || !chkAll.checked) {
+                            hint.innerHTML = "วิธีลบ: ใส่ PIN บัญชีของท่าน แล้วกด “ยืนยันการลบ”";
+                            hint.classList.remove('text-red-700');
+                        }
                     }
-                    
-                    // 3. เคลียร์ประวัติการทำงานเก่า
-                    const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
-                    const deletedLogsCount = await deleteKeysInChunks('AuditLogs', oldLogKeys);
+                }
+            },
 
-                    const deletedOrdersTotal = deletedLegacyCount + deletedHistoryOrdersCount;
-                    const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
-                    await logActivity('SYSTEM_WIPE', `ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วัน (ก่อน ${cutoffFormat}) ลบบิลรวม: ${deletedOrdersTotal}, ลบประวัติ: ${deletedLogsCount}`);
+            executeClearData: async function() {
+                const pin = document.getElementById('clearConfirmPin').value;
+                const isClearAll = document.getElementById('clearAllSalesCheckbox')?.checked || false;
+                const isClearRange = document.getElementById('clearRangeSalesCheckbox')?.checked || false;
 
-                    alert(`✅ ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วันเรียบร้อยแล้ว!\n\n🗑️ ลบบิลที่จบแล้วทั้งหมด: ${deletedOrdersTotal} รายการ\n🗑️ ลบประวัติการใช้งาน: ${deletedLogsCount} รายการ\n\nข้อมูลตั้งค่าร้านและออเดอร์ที่ยังเปิดอยู่ไม่ถูกแตะครับ`);
-                    
-                    this.closeClearDataModal();
-                    
-                    // สั่งรีเฟรชหน้าจอ
-                    activeOrders = {};
-                    window.currentPaidOrders = [];
-                    renderKitchen(); renderStatus(); renderCashier();
-                    fetchSalesData();
-                } catch (e) {
-                    alert("❌ เกิดข้อผิดพลาดในการลบข้อมูล: " + e.message);
-                } finally {
-                    btn.innerHTML = oldText;
-                    btn.disabled = false;
+                if (isClearAll) {
+                    // ล้างข้อมูลทั้งหมด (ควบคุมด้วย Owner PIN)
+                    if (!this.verifyOwnerPin(pin)) {
+                        return alert("❌ Owner PIN ไม่ถูกต้อง! ไม่สามารถล้างยอดขายได้");
+                    }
+
+                    const okToDelete = confirm(`🚨🚨🚨 ยืนยันการล้างยอดขายทั้งหมด 🚨🚨🚨\n\nคุณกำลังจะลบข้อมูลประวัติยอดขายและประวัติการทำงานของพนักงานทั้งหมดตั้งแต่อดีตจนถึงปัจจุบัน!\n\nยอดรวมของร้านทั้งหมดจะถูกรีเซ็ตกลับเป็น 0 บาท\n\nกด OK เพื่อยืนยันการลบทั้งหมด`);
+                    if (!okToDelete) return;
+
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังล้างข้อมูลทั้งหมด...";
+                    btn.disabled = true;
+
+                    try {
+                        // ส่งคำสั่ง DELETE ไปยัง Firebase Realtime Database
+                        await Promise.all([
+                            fetch(`${FIREBASE_URL}Orders.json`, { method: 'DELETE' }),
+                            fetch(`${FIREBASE_URL}OrderHistory.json`, { method: 'DELETE' }),
+                            fetch(`${FIREBASE_URL}AuditLogs.json`, { method: 'DELETE' })
+                        ]);
+
+                        // สรรค์สร้างประวัติความปลอดภัยใหม่ (Audit Log) ชิ้นแรกหลังรีเซ็ตระบบ
+                        await logActivity('WIPE_ALL_SALES', 'ล้างข้อมูลยอดขายและประวัติการทำรายการทั้งหมดในร้าน (รีเซ็ตระบบเป็น 0)');
+
+                        alert("✅ ล้างข้อมูลยอดขายและประวัติทั้งหมดเรียบร้อยแล้ว!\n\nยอดขายของร้านทั้งหมดถูกรีเซ็ตกลับเป็น 0 บาทเรียบร้อยครับ");
+
+                        this.closeClearDataModal();
+
+                        // สั่งรีเฟรชหน้าจอทั้งหมด
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการล้างข้อมูลทั้งหมด: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                } else if (isClearRange) {
+                    // ล้างข้อมูลเฉพาะช่วงวันที่เลือก (ควบคุมด้วย Owner PIN)
+                    if (!this.verifyOwnerPin(pin)) {
+                        return alert("❌ Owner PIN ไม่ถูกต้อง! ไม่สามารถล้างยอดขายได้");
+                    }
+
+                    const startDateVal = document.getElementById('salesDateStart')?.value;
+                    const endDateVal = document.getElementById('salesDateEnd')?.value;
+                    if (!startDateVal || !endDateVal) {
+                        return alert("❌ กรุณาเลือกช่วงวันที่ที่ต้องการล้างยอดในตารางรายงานยอดขายก่อนครับ");
+                    }
+
+                    const startStr = new Date(startDateVal).toLocaleDateString('th-TH');
+                    const endStr = new Date(endDateVal).toLocaleDateString('th-TH');
+                    const dateRangeDisplay = startStr === endStr ? startStr : `${startStr} ถึง ${endStr}`;
+
+                    const okToDelete = confirm(`⚠️ ยืนยันการล้างยอดขายช่วงวันที่เลือก ⚠️\n\nประวัติยอดขายและบิลทั้งหมดในช่วงวันที่ ${dateRangeDisplay} จะถูกลบถาวร!\n\nข้อมูลวันอื่นๆ จะไม่ได้รับผลกระทบ\n\nกด OK เพื่อเริ่มดำเนินการ`);
+                    if (!okToDelete) return;
+
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังล้างยอดตามวันที่เลือก...";
+                    btn.disabled = true;
+
+                    try {
+                        let start = new Date(startDateVal);
+                        let end = new Date(endDateVal);
+                        if (start > end) {
+                            const temp = start; start = end; end = temp;
+                        }
+                        let current = new Date(start);
+                        let dateKeys = [];
+                        while (current <= end) {
+                            const year = current.getFullYear();
+                            const month = String(current.getMonth() + 1).padStart(2, '0');
+                            const date = String(current.getDate()).padStart(2, '0');
+                            dateKeys.push(`${year}-${month}-${date}`);
+                            current.setDate(current.getDate() + 1);
+                        }
+
+                        // ส่งคำสั่ง DELETE ใน Firebase สำหรับแต่ละวัน
+                        const deletePromises = dateKeys.map(key => 
+                            fetch(`${FIREBASE_URL}OrderHistory/${key}.json`, { method: 'DELETE' })
+                        );
+                        await Promise.all(deletePromises);
+
+                        // บันทึกกิจกรรมใน Audit Log
+                        await logActivity('WIPE_RANGE_SALES', `ล้างยอดขายและประวัติบิลเฉพาะช่วงวันที่ ${dateRangeDisplay} สำเร็จ`);
+
+                        alert(`✅ ล้างยอดขายช่วงวันที่ ${dateRangeDisplay} เรียบร้อยแล้วครับ!`);
+                        this.closeClearDataModal();
+
+                        // รีเฟรชหน้าร้าน
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch(e) {
+                        alert("❌ เกิดข้อผิดพลาดในการล้างข้อมูลตามวันที่: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
+                } else {
+                    // การเคลียร์ข้อมูลเก่าตามรอบปกติ
+                    const expectedPin = String(currentUser?.Password ?? currentUser?.PIN ?? "").trim();
+                    if(!expectedPin || String(pin).trim() !== expectedPin) {
+                        return alert("❌ รหัสผ่าน (PIN) ไม่ถูกต้อง!");
+                    }
+
+                    const cutoffDate = getCleanupCutoffDate();
+                    const cutoffTime = cutoffDate.getTime();
+                    const okToDelete = confirm(`⚠️ ยืนยันการเคลียร์ข้อมูลเก่า ⚠️\n\nระบบจะลบเฉพาะข้อมูลที่มีอายุมากกว่า ${CLEANUP_RETENTION_DAYS} วัน\n- บิลยอดขายที่จบแล้ว (ทั้งแบบเก่าและแบบใหม่)\n- ประวัติการเข้าใช้งานและการทำรายการ\n\nข้อมูลเมนู พนักงาน โต๊ะ ท็อปปิ้ง และออเดอร์ที่ยังเปิดอยู่จะไม่ถูกลบ\n\nกด OK เพื่อเริ่มลบข้อมูลเก่า`);
+                    if (!okToDelete) return;
+
+                    const btn = document.getElementById('btnConfirmClear');
+                    const oldText = btn.innerHTML;
+                    btn.innerHTML = "⏳ กำลังกวาดลบข้อมูล...";
+                    btn.disabled = true;
+
+                    try {
+                        const [ordersData, historyData, logsData] = await Promise.all([
+                            fetchFirebaseJson('Orders'),
+                            fetchFirebaseJson('OrderHistory'),
+                            fetchFirebaseJson('AuditLogs')
+                        ]);
+                        
+                        // 1. เคลียร์บิลรูปแบบเก่า ( Orders/ )
+                        const oldOrderKeys = getCleanupKeys(ordersData, cutoffTime, shouldCleanupOrder);
+                        const deletedLegacyCount = await deleteKeysInChunks('Orders', oldOrderKeys);
+                        
+                        // 2. เคลียร์บิลรูปแบบใหม่รายวัน ( OrderHistory/YYYY-MM-DD )
+                        const oldHistoryDates = [];
+                        let deletedHistoryOrdersCount = 0;
+                        for (let dateStr in historyData) {
+                            const time = new Date(dateStr).getTime();
+                            if (!Number.isNaN(time) && time < cutoffTime) {
+                                oldHistoryDates.push(dateStr);
+                                const dayOrders = historyData[dateStr] || {};
+                                deletedHistoryOrdersCount += Object.keys(dayOrders).length;
+                            }
+                        }
+                        if (oldHistoryDates.length > 0) {
+                            const patch = {};
+                            oldHistoryDates.forEach(dateStr => { patch[dateStr] = null; });
+                            await patchFirebase('OrderHistory', patch);
+                        }
+                        
+                        // 3. เคลียร์ประวัติการทำงานเก่า
+                        const oldLogKeys = getCleanupKeys(logsData, cutoffTime, (log, time) => log && log.timestamp && isOldTimestamp(log.timestamp, time));
+                        const deletedLogsCount = await deleteKeysInChunks('AuditLogs', oldLogKeys);
+
+                        const deletedOrdersTotal = deletedLegacyCount + deletedHistoryOrdersCount;
+                        const cutoffFormat = cutoffDate.toLocaleDateString('th-TH');
+                        await logActivity('SYSTEM_WIPE', `ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วัน (ก่อน ${cutoffFormat}) ลบบิลรวม: ${deletedOrdersTotal}, ลบประวัติ: ${deletedLogsCount}`);
+
+                        alert(`✅ ล้างข้อมูลเก่ากว่า ${CLEANUP_RETENTION_DAYS} วันเรียบร้อยแล้ว!\n\n🗑️ ลบบิลที่จบแล้วทั้งหมด: ${deletedOrdersTotal} รายการ\n🗑️ ลบประวัติการใช้งาน: ${deletedLogsCount} รายการ\n\nข้อมูลตั้งค่าร้านและออเดอร์ที่ยังเปิดอยู่ไม่ถูกแตะครับ`);
+                        
+                        this.closeClearDataModal();
+                        
+                        // สั่งรีเฟรชหน้าจอ
+                        activeOrders = {};
+                        window.currentPaidOrders = [];
+                        if (typeof renderKitchen === 'function') renderKitchen();
+                        if (typeof renderStatus === 'function') renderStatus();
+                        if (typeof renderCashier === 'function') renderCashier();
+                        if (typeof fetchSalesData === 'function') fetchSalesData();
+                    } catch (e) {
+                        alert("❌ เกิดข้อผิดพลาดในการลบข้อมูล: " + e.message);
+                    } finally {
+                        btn.innerHTML = oldText;
+                        btn.disabled = false;
+                    }
                 }
             },
 
@@ -288,6 +532,7 @@
                         if((log.action||'').includes('SAVE')) icon = "fa-floppy-disk text-indigo-500";
                         if((log.action||'').includes('WIPE')) icon = "fa-skull-crossbones text-red-700";
                         
+                        const deviceSpan = log.deviceInfo ? ` <span class="text-indigo-600 ml-1.5" title="Device ID: ${log.deviceId || '-'}"><i class="fa-solid fa-mobile-screen-button"></i> <b>${log.deviceInfo}</b> (${log.deviceId ? log.deviceId.substring(0,8) : '-'})</span>` : '';
                         return `
                         <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200">
                             <div class="flex justify-between items-start mb-1">
@@ -295,7 +540,7 @@
                                 <span class="text-[10px] text-slate-400"><i class="fa-solid fa-clock"></i> ${dateStr}</span>
                             </div>
                             <p class="text-xs text-slate-600 mb-1">${log.detail}</p>
-                            <p class="text-[10px] text-slate-500 bg-slate-50 inline-block px-1.5 py-0.5 rounded border">👤 ทำรายการโดย: <b>${log.staffName}</b> (${log.role})</p>
+                            <p class="text-[10px] text-slate-500 bg-slate-50 inline-block px-1.5 py-0.5 rounded border">👤 ทำรายการโดย: <b>${log.staffName}</b> (${log.role})${deviceSpan}</p>
                         </div>`;
                     }).join('');
                     container.innerHTML = html;
@@ -311,7 +556,7 @@
                     let logs = Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
                     let csvContent = "\uFEFF"; 
-                    csvContent += "วันที่,เวลา,พนักงาน,ตำแหน่ง (สิทธิ์),การกระทำ (Action),รายละเอียด\n";
+                    csvContent += "วันที่,เวลา,พนักงาน,ตำแหน่ง (สิทธิ์),การกระทำ (Action),รายละเอียด,รหัสเครื่อง (Device ID),อุปกรณ์ที่ใช้\n";
                     
                     logs.forEach(log => {
                         let t = new Date(log.timestamp);
@@ -322,8 +567,10 @@
                         let role = `"${(log.role || 'Staff').replace(/"/g, '""')}"`;
                         let action = `"${(log.action || '-').replace(/"/g, '""')}"`;
                         let detail = `"${(log.detail || '-').replace(/"/g, '""')}"`;
+                        let deviceId = `"${(log.deviceId || '-').replace(/"/g, '""')}"`;
+                        let deviceInfo = `"${(log.deviceInfo || '-').replace(/"/g, '""')}"`;
                         
-                        csvContent += [dateStr, timeStr, staffName, role, action, detail].join(",") + "\n";
+                        csvContent += [dateStr, timeStr, staffName, role, action, detail, deviceId, deviceInfo].join(",") + "\n";
                     });
                     
                     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -343,11 +590,18 @@
             exportMenuToExcel: function() {
                 if(allMenu.length === 0) return alert("ไม่มีข้อมูลเมนูในระบบครับ");
                 let csvContent = "\uFEFF";
-                csvContent += "ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
+                csvContent += "รหัสเมนู,ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
                 
                 const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
                 
                 sortedMenu.forEach(item => {
+                    let rawKey = item._key || '';
+                    let key = "";
+                    if (rawKey.startsWith('-') || rawKey.startsWith('=')) {
+                        key = `"=""${rawKey.replace(/"/g, '""')}"""`;
+                    } else {
+                        key = `"${rawKey.replace(/"/g, '""')}"`;
+                    }
                     let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
                     let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
                     let price = item.Price || 0;
@@ -370,9 +624,16 @@
                         optSets = `"${setNames.join(' | ').replace(/"/g, '""')}"`;
                     }
 
-                    let img = item.ImageURL && item.ImageURL !== "-" ? `"${item.ImageURL.replace(/"/g, '""')}"` : '""';
+                    let img = '""';
+                    if (item.ImageURL) {
+                        if (item.ImageURL.startsWith("data:image/")) {
+                            img = `"[รูปภาพจากกล้อง]"`;
+                        } else if (item.ImageURL !== "-") {
+                            img = `"${item.ImageURL.replace(/"/g, '""')}"`;
+                        }
+                    }
 
-                    csvContent += [name, cat, price, variants, optSets, img].join(",") + "\n";
+                    csvContent += [key, name, cat, price, variants, optSets, img].join(",") + "\n";
                 });
                 
                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -433,6 +694,7 @@
                         let p = staff.Permissions;
                         if(p) {
                             if(p.order) pIcons += "🛒 ";
+                            if(p.status) pIcons += "📋 ";
                             if(p.kitchen) pIcons += "🧑‍🍳 ";
                             if(p.cashier) pIcons += "💰 ";
                             if(p.discount) pIcons += "🏷️ ";
@@ -440,6 +702,7 @@
                             if(p.menu) pIcons += "🍔 ";
                             if(p.topping) pIcons += "🥤 ";
                             if(p.table) pIcons += "🪑 ";
+                            if(p.clear) pIcons += "🗑️ ";
                             if(p.admin) pIcons += "⚙️ ";
                         } else {
                             pIcons = "🔄 รอตั้งค่าสิทธิ์ใหม่";
@@ -472,6 +735,7 @@
                 const passwordInput = document.getElementById('staffPassword');
                 
                 const cbOrder = document.getElementById('permOrder');
+                const cbStatus = document.getElementById('permStatus');
                 const cbKitchen = document.getElementById('permKitchen');
                 const cbCashier = document.getElementById('permCashier');
                 const cbDiscount = document.getElementById('permDiscount');
@@ -480,6 +744,7 @@
                 const cbMenu = document.getElementById('permMenu');
                 const cbTopping = document.getElementById('permTopping');
                 const cbTable = document.getElementById('permTable');
+                const cbClear = document.getElementById('permClear');
 
                 if (id) {
                     const staff = staffData[id];
@@ -491,6 +756,7 @@
                     
                     if (staff.Permissions) {
                         cbOrder.checked = staff.Permissions.order || false;
+                        cbStatus.checked = staff.Permissions.status || false;
                         cbKitchen.checked = staff.Permissions.kitchen || false;
                         cbCashier.checked = staff.Permissions.cashier || false;
                         cbDiscount.checked = staff.Permissions.discount || staff.Permissions.admin || false;
@@ -499,9 +765,11 @@
                         cbMenu.checked = staff.Permissions.menu || staff.Permissions.admin || false;
                         cbTopping.checked = staff.Permissions.topping || staff.Permissions.admin || false;
                         cbTable.checked = staff.Permissions.table || staff.Permissions.admin || false;
+                        cbClear.checked = staff.Permissions.clear || staff.Permissions.admin || false;
                     } else {
                         const r = (staff.Role || staff.Position || '').toLowerCase();
                         cbOrder.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager');
+                        cbStatus.checked = r.includes('waiter') || r.includes('admin') || r.includes('manager') || r.includes('kitchen') || r.includes('cashier');
                         cbKitchen.checked = r.includes('kitchen') || r.includes('bar') || r.includes('admin') || r.includes('manager');
                         cbCashier.checked = r.includes('cashier') || r.includes('admin') || r.includes('manager');
                         cbDiscount.checked = r.includes('admin') || r.includes('manager') || r.includes('owner');
@@ -510,14 +778,16 @@
                         cbMenu.checked = r.includes('admin') || r.includes('manager');
                         cbTopping.checked = r.includes('admin') || r.includes('manager');
                         cbTable.checked = r.includes('admin') || r.includes('manager');
+                        cbClear.checked = r.includes('admin') || r.includes('manager');
                     }
                 } else {
                     modalTitle.innerText = "เพิ่มพนักงานใหม่";
                     nameInput.value = "";
                     usernameInput.value = "";
                     passwordInput.value = "";
-                    cbOrder.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
+                    cbOrder.checked = true; cbStatus.checked = true; cbKitchen.checked = false; cbCashier.checked = false; cbDiscount.checked = false; cbSales.checked = false; cbAdmin.checked = false;
                     cbMenu.checked = false; cbTopping.checked = false; cbTable.checked = false;
+                    cbClear.checked = false;
                 }
                 document.getElementById('adminStaffFormModal').classList.remove('hidden');
             },
@@ -534,6 +804,7 @@
 
                 const p = {
                     order: document.getElementById('permOrder').checked,
+                    status: document.getElementById('permStatus').checked,
                     kitchen: document.getElementById('permKitchen').checked,
                     cashier: document.getElementById('permCashier').checked,
                     discount: document.getElementById('permDiscount').checked,
@@ -541,10 +812,11 @@
                     admin: document.getElementById('permAdmin').checked,
                     menu: document.getElementById('permMenu').checked,
                     topping: document.getElementById('permTopping').checked,
-                    table: document.getElementById('permTable').checked
+                    table: document.getElementById('permTable').checked,
+                    clear: document.getElementById('permClear').checked
                 };
                 
-                if(!p.order && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table) {
+                if(!p.order && !p.status && !p.kitchen && !p.cashier && !p.discount && !p.sales && !p.admin && !p.menu && !p.topping && !p.table && !p.clear) {
                     return alert('⚠️ กรุณาติ๊กสิทธิ์การเข้าถึงอย่างน้อย 1 หน้าต่างครับ');
                 }
 
@@ -680,11 +952,7 @@
                 // โหลดหมวดหมู่ทั้งหมดเข้าตัวกรองด้านบนหลังบ้าน
                 const filterSel = document.getElementById('adminMenuCategoryFilter');
                 if (filterSel) {
-                    const cats = ['All', 'Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
-                    const uniqueCats = [...new Set(cats)];
-                    const oldVal = filterSel.value || 'All';
-                    filterSel.innerHTML = uniqueCats.map(c => `<option value="${c}">${c === 'All' ? 'ทั้งหมด' : c}</option>`).join('');
-                    filterSel.value = uniqueCats.includes(oldVal) ? oldVal : 'All';
+                    this.populateGroupedCategories(filterSel, true, 'All');
                 }
 
                 // รีเซ็ตสถานะ Checkbox และปุ่ม Bulk
@@ -741,6 +1009,7 @@
                 const delimiter = lines[0].includes("\t") ? "\t" : ",";
                 const header = this.parseDelimitedLine(lines[0], delimiter).map(h => h.trim().toLowerCase());
                 const aliases = {
+                    key: ["รหัสเมนู", "รหัส", "key", "id", "menu key", "menu id"],
                     name: ["ชื่อเมนู", "เมนู", "name", "menu", "menu name"],
                     category: ["หมวดหมู่", "หมวด", "category", "cat"],
                     price: ["ราคา", "price"],
@@ -764,6 +1033,16 @@
                     const lineNo = index + 2;
                     const name = (cells[col.name] || '').trim();
                     if(!name) { errors.push(`แถว ${lineNo}: ไม่มีชื่อเมนู`); return; }
+                    let menuKey = col.key >= 0 ? (cells[col.key] || '').trim() : '';
+                    if (menuKey.startsWith('="') && menuKey.endsWith('"')) {
+                        menuKey = menuKey.slice(2, -1);
+                    }
+                    if (menuKey.startsWith("'")) {
+                        menuKey = menuKey.slice(1);
+                    }
+                    if (menuKey.toUpperCase() === '#NAME?') {
+                        menuKey = ''; // Fallback for corrupted key
+                    }
                     const category = (col.category >= 0 ? cells[col.category] : '') || 'ทั่วไป';
                     const basePrice = Number((col.price >= 0 ? cells[col.price] : '0') || 0);
                     const rawVariants = (col.variants >= 0 ? cells[col.variants] : '') || '';
@@ -781,6 +1060,7 @@
                     const rawOptionSets = (col.optionSets >= 0 ? cells[col.optionSets] : '') || '';
                     const optionSets = rawOptionSets.split('|').map(v => v.trim()).filter(Boolean).map(name => optionMap[name.toLowerCase()] || name);
                     rows.push({
+                        Key: menuKey,
                         Name: name,
                         Category: category.trim() || 'ทั่วไป',
                         Price: Number(variants[0].price || 0),
@@ -811,14 +1091,57 @@
                 if(rows.length === 0) return alert("⚠️ ยังไม่มีเมนูที่นำเข้าได้ครับ");
                 if(errors.length && !confirm(`พบข้อควรตรวจ ${errors.length} รายการ ต้องการนำเข้าแถวที่ถูกต้องต่อไหม?`)) return;
                 const replaceExisting = document.getElementById('menuImportReplaceExisting').checked;
+                
+                const existingByKey = {};
                 const existingByName = {};
-                allMenu.forEach(item => existingByName[String(item.Name || '').trim().toLowerCase()] = item._key);
+                allMenu.forEach(item => {
+                    existingByKey[item._key] = item._key;
+                    existingByName[String(item.Name || '').trim().toLowerCase()] = item._key;
+                });
+
                 const patch = {};
                 rows.forEach((item, idx) => {
-                    const existingKey = existingByName[String(item.Name || '').trim().toLowerCase()];
-                    const key = replaceExisting && existingKey ? existingKey : `menu_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
-                    patch[key] = item;
+                    const rowKey = (item.Key || '').trim();
+                    const existingKeyByName = existingByName[String(item.Name || '').trim().toLowerCase()];
+                    
+                    let key = '';
+                    let existingItem = null;
+                    if (rowKey && existingByKey[rowKey]) {
+                        // ถ้าแถวมีรหัสเมนูและมีอยู่ในฐานข้อมูล ให้เขียนทับรายการเดิม
+                        key = rowKey;
+                        existingItem = allMenu.find(m => m._key === key);
+                    } else if (replaceExisting && existingKeyByName) {
+                        // ถ้าติ๊กเขียนทับเมนูเดิม และชื่อเมนูตรงกัน ให้เขียนทับ
+                        key = existingKeyByName;
+                        existingItem = allMenu.find(m => m._key === key);
+                    } else {
+                        // นอกนั้นให้สร้างเมนูใหม่ (ใช้รหัสที่ระบุมาถ้าเป็นรหัสใหม่ หรือสุ่มสร้างถ้าไม่มี)
+                        key = rowKey || `menu_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 7)}`;
+                    }
+
+                    // ป้องกันรูปภาพโดนเขียนทับหรือลบหายไป
+                    let finalImageURL = (item.ImageURL || '').trim();
+                    const isPlaceholder = finalImageURL.startsWith('[') && finalImageURL.endsWith(']');
+                    if (existingItem) {
+                        if (!finalImageURL || isPlaceholder) {
+                            finalImageURL = existingItem.ImageURL || '';
+                        }
+                    } else {
+                        if (isPlaceholder) {
+                            finalImageURL = '';
+                        }
+                    }
+                    
+                    patch[key] = {
+                        Name: item.Name,
+                        Category: item.Category,
+                        Price: item.Price,
+                        Variants: item.Variants,
+                        OptionSets: item.OptionSets,
+                        ImageURL: finalImageURL
+                    };
                 });
+
                 const btn = document.getElementById('btnImportMenu');
                 const oldText = btn.innerHTML;
                 btn.innerHTML = "⏳ กำลังนำเข้า...";
@@ -847,7 +1170,12 @@
                 const filterVal = document.getElementById('adminMenuCategoryFilter')?.value || 'All';
                 let filteredMenu = [...allMenu];
                 if (filterVal !== 'All') {
-                    filteredMenu = filteredMenu.filter(m => m.Category === filterVal);
+                    const broadVals = ['อาหาร', 'เครื่องดื่ม', 'ของหวาน', 'เซ็ตเมนู', 'อีเว้นต์'];
+                    if (broadVals.includes(filterVal)) {
+                        filteredMenu = filteredMenu.filter(m => window.getBroadMainCategory(m.Category) === filterVal);
+                    } else {
+                        filteredMenu = filteredMenu.filter(m => m.Category === filterVal);
+                    }
                 }
                 
                 const sortedMenu = filteredMenu.sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
@@ -1127,6 +1455,9 @@
                 if(key) {
                     const item = allMenu.find(m => m._key === key); 
                     document.getElementById('adminMenuFormTitle').innerText = "แก้ไขเมนู"; 
+                    document.getElementById('adminMenuKey').value = key;
+                    document.getElementById('adminMenuKey').disabled = true;
+                    document.getElementById('adminMenuKey').classList.add('bg-slate-200', 'text-slate-500');
                     document.getElementById('adminMenuName').value = item.Name; 
                     document.getElementById('adminMenuImage').value = item.ImageURL || "";
                     setTimeout(() => this.previewImage(), 100);
@@ -1174,6 +1505,9 @@
                     this.renderOptionSetsCheckboxes(selOpts);
                 } else {
                     document.getElementById('adminMenuFormTitle').innerText = "เพิ่มเมนูใหม่"; 
+                    document.getElementById('adminMenuKey').value = "";
+                    document.getElementById('adminMenuKey').disabled = false;
+                    document.getElementById('adminMenuKey').classList.remove('bg-slate-200', 'text-slate-500');
                     document.getElementById('adminMenuName').value = ""; 
                     document.getElementById('adminMenuImage').value = ""; 
                     document.getElementById('imagePreviewContainer').classList.add('hidden');
@@ -1319,8 +1653,26 @@
                 btn.innerHTML = "⏳ บันทึก..."; 
                 btn.disabled = true;
                 try { 
-                    if(this.editingMenuKey) await fetch(`${FIREBASE_URL}Menu/${this.editingMenuKey}.json`, { method: 'PATCH', body: JSON.stringify(menuData) }); 
-                    else await fetch(`${FIREBASE_URL}Menu.json`, { method: 'POST', body: JSON.stringify(menuData) }); 
+                    if(this.editingMenuKey) {
+                        await fetch(`${FIREBASE_URL}Menu/${this.editingMenuKey}.json`, { method: 'PATCH', body: JSON.stringify(menuData) }); 
+                    } else {
+                        const customKeyInput = document.getElementById('adminMenuKey').value.trim();
+                        if (customKeyInput && /[\.#$\[\]]/.test(customKeyInput)) {
+                            throw new Error("รหัสเมนูห้ามมีจุด (.) สัญลักษณ์ (#) ($) หรือวงเล็บเหลี่ยม ([ ])");
+                        }
+                        
+                        let finalKey = customKeyInput;
+                        if (finalKey) {
+                            const isDuplicate = allMenu.some(m => m._key === finalKey);
+                            if (isDuplicate) {
+                                throw new Error(`รหัสเมนู "${finalKey}" นี้มีอยู่ในระบบแล้ว กรุณาใช้รหัสอื่น`);
+                            }
+                        } else {
+                            finalKey = `menu_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+                        }
+                        
+                        await fetch(`${FIREBASE_URL}Menu/${finalKey}.json`, { method: 'PUT', body: JSON.stringify(menuData) }); 
+                    }
                     alert('✅ บันทึกเมนูสำเร็จ!'); 
                     logActivity('SAVE_MENU', `สร้าง/แก้ไขเมนูอาหาร: ${name}`); 
                     this.closeAdminMenuFormModal(); 
@@ -1390,7 +1742,7 @@
                     }
                     input.value = base64Str;
                     self.previewImage();
-                    alert("✅ อัปโหลดรูปภาพเมนูเรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย)");
+                    alert("✅ อัปโหลด/ถ่ายรูปภาพเมนูเรียบร้อยแล้ว (ระบบย่อขนาดไฟล์เรียบร้อย)");
                 });
             },
             handlePromptPayQrUpload: function(event) {
@@ -1471,9 +1823,7 @@
                 // ดึงหมวดหมู่ทั้งหมดไปใส่ในกล่องย้ายหมวดหมู่แบบกลุ่ม
                 const catSelect = document.getElementById('bulkCategorySelect');
                 if (catSelect) {
-                    const cats = ['Beverage', 'Food', 'Dessert', ...new Set(allMenu.map(m => m.Category).filter(Boolean))];
-                    const uniqueCats = [...new Set(cats)];
-                    catSelect.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('');
+                    this.populateGroupedCategories(catSelect, false);
                 }
 
                 const container = document.getElementById('bulkToppingOptionsContainer');

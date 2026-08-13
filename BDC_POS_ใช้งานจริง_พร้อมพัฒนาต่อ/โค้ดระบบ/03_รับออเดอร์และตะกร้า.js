@@ -8,31 +8,50 @@
         let comboCurrentStepIndex = 0;
         let comboSelectedStepsData = [];
 
+        let currentOptionQty = 1;
+        let currentCustomItemQty = 1;
+
+        window.changeOptionQty = function(diff) {
+            currentOptionQty = Math.max(1, currentOptionQty + diff);
+            const el = document.getElementById('optQtyDisplay');
+            if(el) el.innerText = currentOptionQty;
+        };
+
+        window.changeCustomItemQty = function(diff) {
+            currentCustomItemQty = Math.max(1, currentCustomItemQty + diff);
+            const el = document.getElementById('customItemQtyDisplay');
+            if(el) el.innerText = currentCustomItemQty;
+        };
+
         function renderCategories() {
-            // ดึงเฉพาะหมวดหมู่หลัก (ส่วนก่อนหน้าเครื่องหมาย /)
-            const categories = ['All', ...new Set(allMenu.map(item => {
-                if (!item.Category) return null;
-                return item.Category.split('/')[0].trim();
-            }).filter(Boolean))];
+            const categories = [
+                { id: 'All', label: 'ทั้งหมด' },
+                { id: 'อาหาร', label: '🍲 อาหาร' },
+                { id: 'เครื่องดื่ม', label: '🥤 เครื่องดื่ม' },
+                { id: 'ของหวาน', label: '🍰 ของหวาน' },
+                { id: 'เซ็ตเมนู', label: '🍱 เซ็ตเมนู' },
+                { id: 'อีเว้นต์', label: '🎉 อีเว้นต์' },
+                { id: 'Special', label: '✨ เมนูกันเหนียว' }
+            ];
             
             const bar = document.getElementById('category-bar');
             if (bar) {
                 bar.innerHTML = categories.map(cat => 
-                    `<button onclick="filterMenu('${cat}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat === 'All' ? 'active' : ''}">${cat === 'All' ? 'ทั้งหมด' : cat}</button>`
+                    `<button onclick="filterMenu('${cat.id}', this)" class="category-pill px-4 py-1.5 rounded-full border bg-white text-xs whitespace-nowrap ${cat.id === activeCategory ? 'active' : ''}">${cat.label}</button>`
                 ).join('');
             }
         }
         
         function filterMenu(cat, btnElement) { 
             activeCategory = cat;
-            activeSubCategory = 'All'; // รีเซ็ตหมวดหมู่ย่อยใหม่ทุกครั้งที่กดหมวดหมู่หลัก
+            activeSubCategory = 'All'; // Reset subcategory when changing broad category
             
             if(btnElement) { 
                 document.querySelectorAll('.category-pill').forEach(btn => btn.classList.remove('active')); 
                 btnElement.classList.add('active'); 
             } 
             
-            // ล้างช่องค้นหาเมื่อคลิกเปลี่ยนหมวดหมู่
+            // Clear search input on category change
             const searchInput = document.getElementById('menuSearchInput');
             if(searchInput && searchInput.value) {
                 searchInput.value = '';
@@ -40,34 +59,31 @@
                 document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
             }
             
-            // ตรวจสอบและแสดงแถบหมวดหมู่ย่อย
             renderSubCategories(cat);
-            
             renderMenuItems(cat, '');
         }
 
-        function renderSubCategories(mainCat) {
+        function renderSubCategories(broadCat) {
             const subBar = document.getElementById('sub-category-bar');
             if (!subBar) return;
             
-            if (mainCat === 'All') {
+            if (broadCat === 'All' || broadCat === 'Special') {
                 subBar.classList.add('hidden');
                 subBar.innerHTML = '';
                 return;
             }
             
-            // ดึงหมวดหมู่ย่อยของหมวดหมู่หลักนี้
-            const subCats = ['All', ...new Set(allMenu.filter(item => {
-                if (!item.Category) return false;
-                const parts = item.Category.split('/');
-                return parts[0].trim() === mainCat && parts.length > 1;
-            }).map(item => item.Category.split('/')[1].trim()))];
+            // Gather all items under this broad category
+            const matchingItems = allMenu.filter(item => getBroadMainCategory(item.Category) === broadCat);
+            const subCats = ['All', ...new Set(matchingItems.map(item => getItemSubCategory(item)))];
             
-            if (subCats.length > 1) { // มีหมวดหมู่ย่อยนอกจาก 'All'
+            if (subCats.length > 1) {
                 subBar.classList.remove('hidden');
-                subBar.innerHTML = subCats.map(sub => 
-                    `<button onclick="filterSubMenu('${sub}', this)" class="sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap transition-all shadow-sm ${sub === 'All' ? 'border-teal-600 text-teal-600 font-bold bg-teal-50' : 'border-slate-200 text-slate-500'}">${sub === 'All' ? 'ทั้งหมด' : sub}</button>`
-                ).join('');
+                subBar.innerHTML = subCats.map(sub => {
+                    const displayName = sub === 'All' ? 'ทั้งหมด' : sub;
+                    const isActive = sub === activeSubCategory;
+                    return `<button onclick="filterSubMenu('${sub}', this)" class="sub-category-pill px-3 py-1.5 rounded-full border bg-white text-[10px] whitespace-nowrap transition-all shadow-sm ${isActive ? 'border-teal-600 text-teal-600 font-bold bg-teal-50' : 'border-slate-200 text-slate-500'}">${displayName}</button>`;
+                }).join('');
             } else {
                 subBar.classList.add('hidden');
                 subBar.innerHTML = '';
@@ -89,21 +105,17 @@
             const grid = document.getElementById('menu-grid'); 
             let filtered = allMenu;
             
-            // กรองตามหมวดหมู่หลัก (cat หรือ activeCategory)
+            // Filter by broad main category
             if (activeCategory !== 'All') {
-                filtered = filtered.filter(item => {
-                    if (!item.Category) return false;
-                    const mainPart = item.Category.split('/')[0].trim();
-                    return mainPart === activeCategory;
-                });
-                
-                // กรองตามหมวดหมู่ย่อย (activeSubCategory)
-                if (activeSubCategory !== 'All') {
-                    filtered = filtered.filter(item => {
-                        if (!item.Category) return false;
-                        const parts = item.Category.split('/');
-                        return parts.length > 1 && parts[1].trim() === activeSubCategory;
-                    });
+                if (activeCategory === 'Special') {
+                    filtered = [];
+                } else {
+                    filtered = filtered.filter(item => getBroadMainCategory(item.Category) === activeCategory);
+                    
+                    // Filter by subcategory
+                    if (activeSubCategory !== 'All') {
+                        filtered = filtered.filter(item => getItemSubCategory(item) === activeSubCategory);
+                    }
                 }
             }
             
@@ -115,25 +127,56 @@
                 );
             }
             
-            if(filtered.length === 0) {
-                grid.innerHTML = `<div class="col-span-2 sm:col-span-3 text-center py-10 text-gray-400 text-sm">🔍 ไม่พบเมนูที่ตรงกับ "${query}"</div>`;
-                return;
+            let itemsHtml = '';
+            if (filtered.length === 0) {
+                if (activeCategory === 'Special') {
+                    itemsHtml = `<div class="col-span-2 sm:col-span-3 text-center py-6 text-slate-500 text-xs font-semibold bg-teal-50/50 rounded-2xl border border-teal-100 mb-2 p-4">
+                        💡 หน้านี้ใช้สำหรับสั่งเมนูป้อนมือ (Special Item)<br>
+                        กดที่ปุ่ม "เมนูกันเหนียว" ด้านล่างเพื่อพิมพ์ชื่อและราคาได้เลยครับ
+                    </div>`;
+                } else {
+                    itemsHtml = `<div class="col-span-2 sm:col-span-3 text-center py-6 text-slate-400 text-xs font-semibold">🔍 ไม่พบเมนูที่ตรงกับ "${query}"</div>`;
+                }
+            } else {
+                itemsHtml = filtered.map((item) => { 
+                    let fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop'; 
+                    if (item.Category && item.Category.toLowerCase().includes('beverage')) fallbackImg = 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=300&fit=crop'; 
+                    else if (item.Category && item.Category.toLowerCase().includes('dessert')) fallbackImg = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=300&h=300&fit=crop'; 
+                    else if (item.Category && item.Category.toLowerCase().includes('food')) fallbackImg = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=300&fit=crop'; 
+                    
+                    let imgUrl = item.ImageURL ? appAdmin.convertDriveLink(item.ImageURL) : fallbackImg; 
+                    let displayPrice = item.Price || 0;
+                    if(item.Variants && item.Variants.length > 0) displayPrice = item.Variants[0].price;
+
+                    let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
+                    
+                    return `<div class="menu-card bg-white p-2.5 sm:p-2 rounded-xl shadow-sm border border-gray-100 flex flex-row sm:flex-col items-center sm:items-stretch cursor-pointer animate-fade-in active:scale-95 transition-all gap-3 sm:gap-0" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'>
+                        <div class="w-14 h-14 sm:w-full sm:aspect-square bg-gray-100 rounded-lg sm:mb-2 overflow-hidden relative shrink-0">
+                            <img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'">
+                            <div class="hidden sm:block absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div>
+                        </div>
+                        <div class="flex-1 min-w-0 sm:contents flex flex-col justify-between py-0.5">
+                            <p class="font-bold sm:font-semibold text-slate-800 text-sm sm:text-xs sm:px-1 sm:line-clamp-2 truncate">${item.Name}</p>
+                            ${hasOpt ? '<span class="text-[10px] sm:text-[9px] text-gray-400 sm:px-1 mt-0.5 sm:mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}
+                            <p class="sm:hidden font-bold text-teal-700 text-sm mt-0.5">฿${displayPrice}</p>
+                        </div>
+                    </div>`; 
+                }).join('');
             }
 
-            grid.innerHTML = filtered.map((item) => { 
-                let fallbackImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=300&fit=crop'; 
-                if (item.Category && item.Category.toLowerCase().includes('beverage')) fallbackImg = 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&h=300&fit=crop'; 
-                else if (item.Category && item.Category.toLowerCase().includes('dessert')) fallbackImg = 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=300&h=300&fit=crop'; 
-                else if (item.Category && item.Category.toLowerCase().includes('food')) fallbackImg = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=300&fit=crop'; 
-                
-                let imgUrl = item.ImageURL ? appAdmin.convertDriveLink(item.ImageURL) : fallbackImg; 
-                let displayPrice = item.Price || 0;
-                if(item.Variants && item.Variants.length > 0) displayPrice = item.Variants[0].price;
+            // เพิ่มการ์ด "เมนูกันเหนียว (กำหนดเอง)" ต่อท้ายลิสต์เสมอ เพื่อให้ใช้ได้ทุกเมื่อ
+            const customCardHtml = `
+            <div class="menu-card bg-gradient-to-br from-teal-50 to-emerald-50 p-2.5 sm:p-2 rounded-xl shadow-sm border border-teal-200 flex flex-row sm:flex-col items-center sm:items-stretch cursor-pointer animate-fade-in active:scale-95 transition-all gap-3 sm:gap-0" onclick="window.openCustomItemModal()">
+                <div class="w-14 h-14 sm:w-full sm:aspect-square bg-teal-100/50 rounded-lg sm:mb-2 overflow-hidden flex flex-col items-center justify-center text-teal-600 text-2xl shrink-0">
+                    <i class="fa-solid fa-circle-plus"></i>
+                </div>
+                <div class="flex-1 min-w-0 sm:contents flex flex-col justify-between py-0.5">
+                    <p class="font-bold text-teal-800 text-sm sm:text-xs sm:px-1 sm:line-clamp-2 truncate">เมนูกันเหนียว</p>
+                    <span class="text-[10px] sm:text-[9px] text-teal-600 sm:px-1 mt-0.5 sm:mt-1 font-semibold"><i class="fa-solid fa-keyboard"></i> กำหนดเอง</span>
+                </div>
+            </div>`;
 
-                let hasOpt = (item.Variants && item.Variants.length > 1) || (item.OptionSets && item.OptionSets.length > 0) || item.OptionGroup; 
-                
-                return `<div class="menu-card bg-white p-2 rounded-xl shadow-sm border border-gray-100 flex flex-col cursor-pointer animate-fade-in" onclick='handleMenuClick(${JSON.stringify(item).replace(/'/g, "&#39;")})'><div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative"><img src="${imgUrl}" class="w-full h-full object-cover" onerror="this.src='${fallbackImg}'"><div class="absolute bottom-1 right-1 bg-white/90 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-600 shadow-sm border border-white">฿${displayPrice}</div></div><p class="font-semibold text-gray-800 text-xs px-1 line-clamp-2">${item.Name}</p>${hasOpt ? '<span class="text-[9px] text-gray-400 px-1 mt-1"><i class="fa-solid fa-list-check"></i> มีตัวเลือก</span>' : ''}</div>`; 
-            }).join(''); 
+            grid.innerHTML = itemsHtml + customCardHtml; 
         }
 
         window.searchMenu = function() {
@@ -164,6 +207,12 @@
             const sugBox = document.getElementById('menuSearchSuggestions');
             if(!sugBox) return;
             
+            // ซ่อนหรือปิดการทำงานกล่องช่วยพิมพ์บนจอมือถือเพื่อหลีกเลี่ยงการบดบังเมนูหลัก
+            if (window.innerWidth < 768) {
+                sugBox.classList.add('hidden');
+                return;
+            }
+            
             const query = q.toLowerCase().trim();
             if(!query) {
                 sugBox.classList.add('hidden');
@@ -176,7 +225,7 @@
                 return;
             }
             
-            sugBox.innerHTML = matches.map(item => {
+            let suggestionsHtml = matches.map(item => {
                 const name = item.Name;
                 const idx = name.toLowerCase().indexOf(query);
                 let highlighted = name;
@@ -193,6 +242,9 @@
                 </button>`;
             }).join('');
             
+            suggestionsHtml += `<button onclick="document.getElementById('menuSearchSuggestions').classList.add('hidden')" class="w-full text-center p-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl mt-1.5 border border-dashed border-red-200 active:scale-95 transition-all"><i class="fa-solid fa-chevron-up mr-1"></i> ย่อกล่องช่วยพิมพ์ (ดูรายการด้านหลัง)</button>`;
+            
+            sugBox.innerHTML = suggestionsHtml;
             sugBox.classList.remove('hidden');
         }
 
@@ -233,7 +285,15 @@
             }
         });
 
+        // 🌟 ปิดกล่องคำแนะนำการค้นหาเมื่อมีการเลื่อนหน้าจอ (สไลด์เลื่อนดูเมนูด้านหลัง)
+        window.addEventListener('scroll', function() {
+            document.getElementById('menuSearchSuggestions')?.classList.add('hidden');
+        }, { capture: true, passive: true });
+
         function openOptionModal(item) {
+            currentOptionQty = 1;
+            const displayEl = document.getElementById('optQtyDisplay');
+            if (displayEl) displayEl.innerText = 1;
             currentSelectingItem = item; document.getElementById('optItemName').innerText = item.Name;
             let basePrice = item.Price || 0; if(item.Variants && item.Variants.length > 0) basePrice = item.Variants[0].price; document.getElementById('optItemPrice').innerText = `฿${basePrice}`;
             
@@ -250,6 +310,22 @@
                     } });
             }
             if(item.OptionGroup && (!item.OptionSets || item.OptionSets.length === 0)) { html += `<div class="p-3 bg-amber-50 text-amber-800 text-xs rounded-xl mb-3 border border-amber-200">พบข้อมูลท็อปปิ้งแบบเก่า (${item.OptionGroup}) กรุณาเข้าไปกดผูกเซ็ตท็อปปิ้งแบบใหม่ในหน้าการจัดการครับ</div>`; }
+            
+            // เพิ่มกล่องแอดออนพิเศษ (กำหนดเอง)
+            html += `<div class="mb-4 bg-teal-50/50 p-3 rounded-2xl border border-teal-100">
+                <p class="text-xs font-bold text-teal-800 mb-2 flex justify-between">
+                    <span>✨ เพิ่มตัวเลือกพิเศษ (กำหนดเอง)</span>
+                    <span class="text-[10px] text-teal-600 font-normal">ใช้เมื่อตัวเลือกในระบบไม่ตรง/ไม่ครบ</span>
+                </p>
+                <div class="grid grid-cols-[1.5fr_1fr] gap-2">
+                    <input type="text" id="customAddonName" placeholder="ระบุชื่อ (เช่น เพิ่มวิปครีม, เพิ่มไข่ดาว)" class="w-full p-2.5 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-teal-500">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">฿</span>
+                        <input type="number" id="customAddonPrice" placeholder="ราคาเสริม" min="0" class="w-full pl-6 pr-2 p-2.5 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:border-teal-500">
+                    </div>
+                </div>
+            </div>`;
+            
             html += `<div class="mb-4"><p class="text-sm font-bold text-slate-800 mb-2 bg-slate-100 px-3 py-2 rounded-xl">หมายเหตุเพิ่มเติม</p><input type="text" id="optNote" placeholder="เช่น เผ็ดน้อย, ไม่ใส่ผัก, แยกน้ำ..." class="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500"></div>`;
             document.getElementById('optionsContainer').innerHTML = html; document.getElementById('optionModal').classList.remove('hidden');
         }
@@ -262,8 +338,17 @@
             if(selectedVar) { if(selectedVar.value !== 'ปกติ' && selectedVar.value !== '') { finalName += ` (${selectedVar.value})`; } finalPrice = Number(selectedVar.dataset.price); } 
             else if (currentSelectingItem.Variants && currentSelectingItem.Variants.length > 0) { finalPrice = currentSelectingItem.Variants[0].price; }
             document.querySelectorAll('#optionsContainer input[type="checkbox"]:checked, #optionsContainer input[type="radio"]:checked').forEach(el => { if (el.value !== "NONE" && el.name !== "opt_variant") { addonTexts.push(el.value); optionsTotalPrice += Number(el.dataset.price); } });
+            
+            // อ่านแอดออนพิเศษ (กำหนดเอง)
+            const customAddonName = document.getElementById('customAddonName')?.value.trim();
+            const customAddonPrice = Number(document.getElementById('customAddonPrice')?.value) || 0;
+            if (customAddonName) {
+                addonTexts.push(customAddonPrice > 0 ? `${customAddonName}: ฿${customAddonPrice}` : customAddonName);
+                optionsTotalPrice += customAddonPrice;
+            }
+
             let noteText = document.getElementById('optNote').value.trim(); if(addonTexts.length > 0) { finalName += ` [${addonTexts.join(', ')}]`; }
-            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category); closeOptionModal();
+            addToCart(finalName, finalPrice + optionsTotalPrice, noteText, currentSelectingItem.Category, currentOptionQty, currentSelectingItem._key); closeOptionModal();
         }
 
         // ==========================================
@@ -686,8 +771,55 @@
                 });
                 
                 const combinedName = `${currentComboItem.Name} [${parts.join(', ')}]`;
-                addToCart(combinedName, totalPrice, "", currentComboItem.Category);
+                addToCart(combinedName, totalPrice, "", currentComboItem.Category, 1, currentComboItem._key);
                 closeComboModal();
             }
+        };
+
+        // ==========================================
+        // 🌟 CUSTOM FALLBACK ITEM (เมนูกันเหนียว) 🌟
+        // ==========================================
+        window.openCustomItemModal = function() {
+            document.getElementById('customItemName').value = '';
+            document.getElementById('customItemPrice').value = '';
+            document.getElementById('customItemNote').value = '';
+            document.getElementById('customItemCategory').value = 'Food';
+            
+            currentCustomItemQty = 1;
+            const displayEl = document.getElementById('customItemQtyDisplay');
+            if (displayEl) displayEl.innerText = 1;
+
+            document.getElementById('customItemModal').classList.remove('hidden');
+            
+            setTimeout(() => {
+                document.getElementById('customItemName').focus();
+            }, 100);
+        };
+
+        window.closeCustomItemModal = function() {
+            document.getElementById('customItemModal').classList.add('hidden');
+        };
+
+        window.confirmCustomItemAndAdd = function() {
+            const nameInput = document.getElementById('customItemName');
+            const priceInput = document.getElementById('customItemPrice');
+            const catSelect = document.getElementById('customItemCategory');
+            const noteInput = document.getElementById('customItemNote');
+
+            const name = nameInput.value.trim();
+            const priceVal = priceInput.value.trim();
+            const category = catSelect.value;
+            const note = noteInput.value.trim();
+
+            if (!name) {
+                return alert("⚠️ กรุณาระบุชื่อรายการเมนูครับ");
+            }
+            if (priceVal === '' || isNaN(priceVal) || Number(priceVal) < 0) {
+                return alert("⚠️ กรุณาระบุราคาต่อชิ้นให้ถูกต้องครับ");
+            }
+
+            const price = Number(priceVal);
+            addToCart(name, price, note, category, currentCustomItemQty, 'custom');
+            window.closeCustomItemModal();
         };
 

@@ -25,7 +25,7 @@
 
         window.renderSalesUI = function() {
             if (!window.currentSalesData) return;
-            const { totalRevenue, totalOrders, categorySales, totalItemsCount, paidOrdersArray, displayDateStr, cashSales, transferSales, creditSales } = window.currentSalesData;
+            const { totalRevenue, totalOrders, categorySales, totalItemsCount, paidOrdersArray, displayDateStr, cashSales, transferSales, creditSales, thaiPlusSales } = window.currentSalesData;
             const filter = window.salesPaymentFilter || 'all';
 
             // กรองบิลตามวิธีจ่ายเงิน
@@ -56,6 +56,8 @@
                     methodBadge = `<span class="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold">📱 โอนเงิน</span>`;
                 } else if (method === 'credit') {
                     methodBadge = `<span class="bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded text-[10px] font-bold">💳 บัตรเครดิต</span>`;
+                } else if (method === 'thai_plus') {
+                    methodBadge = `<span class="bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded text-[10px] font-bold">🇹🇭 ไทยช่วยไทยพลัส</span>`;
                 } else {
                     methodBadge = `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-bold">${order.paymentMethod || '-'}</span>`;
                 }
@@ -178,6 +180,7 @@
             const cashActive = filter === 'cash' ? activeClass : 'opacity-80 hover:opacity-100';
             const transferActive = filter === 'transfer' ? activeClass : 'opacity-80 hover:opacity-100';
             const creditActive = filter === 'credit' ? activeClass : 'opacity-80 hover:opacity-100';
+            const thaiPlusActive = filter === 'thai_plus' ? activeClass : 'opacity-80 hover:opacity-100';
             const allActive = filter === 'all' ? 'ring-2 ring-white' : '';
 
             document.getElementById('sales-container').innerHTML = `
@@ -199,7 +202,7 @@
                 
                 <div class="col-span-2 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-center">
                     <p class="text-[11px] font-bold text-slate-400 mb-2.5 text-center"><i class="fa-solid fa-filter mr-1"></i> คลิกเลือกเพื่อกรองบิลด้านล่าง</p>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-2 gap-2">
                         <button onclick="window.filterSalesByPayment('cash')" class="bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100 text-center active:scale-95 transition-all ${cashActive}">
                             <p class="text-[10px] font-bold text-emerald-700 mb-0.5">💵 เงินสด</p>
                             <p class="text-sm font-bold text-emerald-800">฿${cashSales.toLocaleString()}</p>
@@ -211,6 +214,10 @@
                         <button onclick="window.filterSalesByPayment('credit')" class="bg-orange-50/50 p-2.5 rounded-xl border border-orange-100 text-center active:scale-95 transition-all ${creditActive}">
                             <p class="text-[10px] font-bold text-orange-700 mb-0.5">💳 เครดิต</p>
                             <p class="text-sm font-bold text-orange-800">฿${creditSales.toLocaleString()}</p>
+                        </button>
+                        <button onclick="window.filterSalesByPayment('thai_plus')" class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center active:scale-95 transition-all ${thaiPlusActive}">
+                            <p class="text-[10px] font-bold text-purple-700 mb-0.5">🇹🇭 ไทยช่วยไทย+</p>
+                            <p class="text-sm font-bold text-purple-800">฿${thaiPlusSales.toLocaleString()}</p>
                         </button>
                     </div>
                 </div>
@@ -303,7 +310,7 @@
                 }
                 
                 let totalRevenue = 0; let totalOrders = 0; let categorySales = {}; let totalItemsCount = 0; let paidOrdersArray = []; 
-                let cashSales = 0; let transferSales = 0; let creditSales = 0;
+                let cashSales = 0; let transferSales = 0; let creditSales = 0; let thaiPlusSales = 0;
                 
                 let displayDateStr;
                 if (startDateVal && endDateVal) {
@@ -333,6 +340,8 @@
                                 transferSales += orderAmount;
                             } else if (method === 'credit') {
                                 creditSales += orderAmount;
+                            } else if (method === 'thai_plus') {
+                                thaiPlusSales += orderAmount;
                             }
 
                             (order.items || []).filter(i => i.itemStatus !== 'canceled').forEach(item => { 
@@ -371,7 +380,8 @@
                     displayDateStr,
                     cashSales,
                     transferSales,
-                    creditSales
+                    creditSales,
+                    thaiPlusSales
                 };
                 window.salesPaymentFilter = 'all'; // reset filter on fresh load
                 window.renderSalesUI();

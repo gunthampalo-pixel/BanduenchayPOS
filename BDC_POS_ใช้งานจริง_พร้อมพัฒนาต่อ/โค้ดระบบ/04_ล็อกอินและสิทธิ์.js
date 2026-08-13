@@ -6,6 +6,7 @@
         
         function loginSuccess(user) { 
             currentUser = user; 
+            localStorage.setItem('bdc_current_user', JSON.stringify(user));
             document.getElementById('login-screen').classList.add('hidden'); 
             document.getElementById('global-header').classList.remove('hidden'); 
             document.getElementById('bottom-nav').classList.remove('hidden'); 
@@ -17,6 +18,14 @@
             document.getElementById('passwordInput').value = ""; 
             document.getElementById('login-error').innerText = ""; 
             
+            // 🧪 อัปเดตและรันระบบทดสอบหากเป็นบัญชีพนักงานทดลอง/นักพัฒนา
+            if (typeof window.updateTestModeBanner === 'function') {
+                window.updateTestModeBanner();
+            }
+            if (typeof isDemoUserActive === 'function' && isDemoUserActive() && typeof runTestBackgroundCleanup === 'function') {
+                runTestBackgroundCleanup();
+            }
+
             setupPermissions(user); 
             logActivity('LOGIN', `เข้าสู่ระบบสำเร็จ`); 
             
@@ -36,11 +45,12 @@
             let p = user.Permissions;
 
             if (p) {
-                if(p.order) { navOrder.style.display = 'flex'; navStatus.style.display = 'flex'; }
-                if(p.kitchen) { navKitchen.style.display = 'flex'; navStatus.style.display = 'flex'; }
-                if(p.cashier) { navCashier.style.display = 'flex'; navStatus.style.display = 'flex'; }
+                if(p.order) { navOrder.style.display = 'flex'; }
+                if(p.status) { navStatus.style.display = 'flex'; }
+                if(p.kitchen) { navKitchen.style.display = 'flex'; }
+                if(p.cashier) { navCashier.style.display = 'flex'; }
                 if(p.sales) navSales.style.display = 'flex';
-                if(p.admin || p.menu || p.topping || p.table) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
+                if(p.admin || p.menu || p.topping || p.table || p.clear) { navAdmin.style.display = 'flex'; navAdmin.classList.remove('hidden'); }
             } else {
                 const roleStr = (user.Role || user.Position || "").toLowerCase(); 
                 let isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ'); 
@@ -72,7 +82,7 @@
                     btnStaff.style.display = p.admin ? 'flex' : 'none';
                     btnReceipt.style.display = p.admin ? 'flex' : 'none';
                     btnAudit.style.display = p.admin ? 'flex' : 'none';
-                    btnClear.style.display = p.admin ? 'flex' : 'none';
+                    btnClear.style.display = (p.admin || p.clear) ? 'flex' : 'none';
                 } else {
                     const roleStr = (user.Role || user.Position || "").toLowerCase();
                     const isManager = roleStr.includes('admin') || roleStr.includes('manager') || roleStr.includes('ผู้จัดการ');
@@ -89,6 +99,37 @@
             else if (navAdmin.style.display === 'flex') switchPage('admin', navAdmin);
         }
 
-        function logout() { logActivity('LOGOUT', `ออกจากระบบ`); currentUser = null; stopPolling(); document.getElementById('login-screen').classList.remove('hidden'); document.getElementById('global-header').classList.add('hidden'); document.getElementById('bottom-nav').classList.add('hidden'); document.getElementById('bottom-nav').classList.remove('flex'); document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden')); }
+        function logout() { 
+            logActivity('LOGOUT', `ออกจากระบบ`); 
+            currentUser = null; 
+            localStorage.removeItem('bdc_current_user');
+            stopPolling(); 
+            document.getElementById('login-screen').classList.remove('hidden'); 
+            document.getElementById('global-header').classList.add('hidden'); 
+            document.getElementById('bottom-nav').classList.add('hidden'); 
+            document.getElementById('bottom-nav').classList.remove('flex'); 
+            document.querySelectorAll('.page-content').forEach(p => p.classList.add('hidden')); 
+
+            // 🧪 อัปเดตการแสดงผลแบนเนอร์แจ้งเตือนจำลองข้อมูล (ซ่อนแบนเนอร์สำหรับพนักงานเดโม่ที่ล็อกเอาท์)
+            if (typeof window.updateTestModeBanner === 'function') {
+                window.updateTestModeBanner();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.initialDataPromise) {
+                window.initialDataPromise.then(() => {
+                    const saved = localStorage.getItem('bdc_current_user');
+                    if (saved) {
+                        try {
+                            const user = JSON.parse(saved);
+                            loginSuccess(user);
+                        } catch (e) {
+                            console.error("Auto login error:", e);
+                        }
+                    }
+                });
+            }
+        });
         function switchPage(pageId, btnElement) { document.querySelectorAll('.page-content').forEach(page => page.classList.add('hidden')); document.getElementById('page-' + pageId).classList.remove('hidden'); document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active')); if(btnElement) btnElement.classList.add('active'); const cartBar = document.getElementById('cart-bar'); if(pageId === 'order') cartBar.classList.remove('translate-y-32'); else cartBar.classList.add('translate-y-32'); if(['kitchen', 'cashier', 'status', 'order', 'sales', 'admin'].includes(pageId)) { fetchActiveOrders(); if(pageId === 'sales') fetchSalesData(); if(!pollingInterval && pageId !== 'admin') pollingInterval = setInterval(fetchActiveOrders, 3000); } else { stopPolling(); } }
         function stopPolling() { if(pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; } }
