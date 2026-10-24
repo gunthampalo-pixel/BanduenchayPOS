@@ -399,3 +399,25 @@
 
             } catch (e) { console.error("Load Error:", e); }
         }
+
+// Shared XLSX exporter: preserve numeric values and literal strings (including IDs).
+window.exportRowsToXLSX = function(rows, sheetName, filename) {
+    try {
+        if (typeof XLSX === 'undefined') {
+            throw new Error('โหลดเครื่องมือ Excel ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตและรีเฟรชหน้าเว็บแล้วลองใหม่');
+        }
+        const workbook = XLSX.utils.book_new();
+        const worksheet = XLSX.utils.aoa_to_sheet(rows);
+        worksheet['!cols'] = (rows[0] || []).map((_, col) => ({
+            wch: Math.min(60, Math.max(12, ...rows.slice(0, 201).map(row => String(row[col] ?? '').length + 2)))
+        }));
+        if (worksheet['!ref']) worksheet['!autofilter'] = { ref: worksheet['!ref'] };
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        XLSX.writeFile(workbook, filename, { bookType: 'xlsx', compression: true });
+        return true;
+    } catch (error) {
+        console.error(error);
+        alert('❌ ไม่สามารถดาวน์โหลดเป็น .xlsx ได้: ' + error.message);
+        return false;
+    }
+};

@@ -390,13 +390,13 @@
         }
         
         window.exportSalesToExcel = function() {
-            window.exportSalesItemsCSV();
+            window.exportSalesItemsXLSX();
         };
 
-        window.exportSalesItemsCSV = function() {
+        window.exportSalesItemsXLSX = function() {
             if(!window.currentPaidOrders || window.currentPaidOrders.length === 0) return alert("⚠️ ไม่มีข้อมูลยอดขายสำหรับดาวน์โหลดครับ");
             
-            // Rows array for Excel/CSV
+            // Typed rows for the XLSX workbook
             const rows = [
                 [
                     "วันที่ (YYYY-MM-DD)", "ปี", "เดือน", "วัน", "ชั่วโมง", "วันในสัปดาห์", "เวลา", 
@@ -513,36 +513,11 @@
                 ? (startVal === endVal ? startVal : `${startVal}_ถึง_${endVal}`)
                 : new Date().toISOString().split('T')[0];
 
-            try {
-                if (typeof XLSX === 'undefined') {
-                    throw new Error("ระบบ XLSX ยังโหลดไม่เสร็จ กรุณารอสักครู่หรือดาวน์โหลดแบบ CSV แทนครับ");
-                }
-                const wb = XLSX.utils.book_new();
-                const ws = XLSX.utils.aoa_to_sheet(rows);
-                XLSX.utils.book_append_sheet(wb, ws, "ยอดขายรายสินค้า");
-                XLSX.writeFile(wb, `สรุปยอดขาย_BDC_${exportDateStr}.xlsx`);
-            } catch (e) {
-                console.error(e);
-                alert("❌ ไม่สามารถดาวน์โหลดเป็น .xlsx ได้: " + e.message + "\nระบบจะสลับไปดาวน์โหลดแบบ CSV ให้แทนครับ");
-                window.downloadCSVFallback(rows, exportDateStr);
-            }
+            window.exportRowsToXLSX(rows, "ยอดขายรายสินค้า", `สรุปยอดขาย_BDC_${exportDateStr}.xlsx`);
         };
 
-        window.downloadCSVFallback = function(rows, exportDateStr) {
-            let csvContent = "\uFEFF";
-            rows.forEach(r => {
-                const safeRow = r.map(val => `"${(val || '-').toString().replace(/"/g, '""')}"`);
-                csvContent += safeRow.join(",") + "\n";
-            });
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }); 
-            const url = URL.createObjectURL(blob); 
-            const link = document.createElement("a"); 
-            link.setAttribute("href", url); 
-            link.setAttribute("download", `สรุปยอดขาย_BDC_${exportDateStr}.csv`); 
-            document.body.appendChild(link); 
-            link.click(); 
-            document.body.removeChild(link); 
-        };
+        // Compatibility for callers from older versions; always produces XLSX.
+        window.exportSalesItemsCSV = window.exportSalesItemsXLSX;
 
         // 🗑️ ฟังก์ชันลบบิลขายเดี่ยวรายใบอย่างถาวร (ควบคุมสิทธิ์แอดมิน + ใช้ Owner PIN)
         window.deletePaidOrder = function(orderId, dateKey) {

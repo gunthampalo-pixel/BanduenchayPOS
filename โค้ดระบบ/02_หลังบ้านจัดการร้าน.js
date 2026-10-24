@@ -550,127 +550,52 @@
 
             exportAuditLogToExcel: async function() {
                 try {
-                    let res = await fetch(`${FIREBASE_URL}AuditLogs.json`);
-                    let data = await res.json();
-                    if(!data) return alert("ไม่มีประวัติการทำงานในระบบครับ");
-                    
-                    let logs = Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    
-                    let csvContent = "\uFEFF"; 
-                    csvContent += "วันที่,เวลา,พนักงาน,ตำแหน่ง (สิทธิ์),การกระทำ (Action),รายละเอียด,รหัสเครื่อง (Device ID),อุปกรณ์ที่ใช้\n";
-                    
-                    logs.forEach(log => {
-                        let t = new Date(log.timestamp);
-                        let dateStr = t.toLocaleDateString('th-TH');
-                        let timeStr = t.toLocaleTimeString('th-TH');
-                        
-                        let staffName = `"${(log.staffName || 'System').replace(/"/g, '""')}"`;
-                        let role = `"${(log.role || 'Staff').replace(/"/g, '""')}"`;
-                        let action = `"${(log.action || '-').replace(/"/g, '""')}"`;
-                        let detail = `"${(log.detail || '-').replace(/"/g, '""')}"`;
-                        let deviceId = `"${(log.deviceId || '-').replace(/"/g, '""')}"`;
-                        let deviceInfo = `"${(log.deviceInfo || '-').replace(/"/g, '""')}"`;
-                        
-                        csvContent += [dateStr, timeStr, staffName, role, action, detail, deviceId, deviceInfo].join(",") + "\n";
+                    const res = await fetch(`${FIREBASE_URL}AuditLogs.json`);
+                    if (!res.ok) throw new Error('โหลดประวัติไม่สำเร็จ');
+                    const data = await res.json();
+                    if (!data || !Object.keys(data).length) return alert("ไม่มีประวัติการทำงานในระบบครับ");
+                    const rows = [["วันที่", "เวลา", "พนักงาน", "ตำแหน่ง (สิทธิ์)", "การกระทำ (Action)", "รายละเอียด", "รหัสเครื่อง (Device ID)", "อุปกรณ์ที่ใช้"]];
+                    Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(log => {
+                        const t = new Date(log.timestamp);
+                        rows.push([t.toLocaleDateString('th-TH'), t.toLocaleTimeString('th-TH'),
+                            log.staffName || 'System', log.role || 'Staff', log.action || '-',
+                            log.detail || '-', String(log.deviceId || '-'), log.deviceInfo || '-']);
                     });
-                    
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement("a");
-                    link.setAttribute("href", url);
-                    link.setAttribute("download", `ประวัติการทำงาน_AuditLog_${new Date().toLocaleDateString('th-TH').replace(/\//g,'-')}.csv`);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                    window.exportRowsToXLSX(rows, 'ประวัติการทำงาน', `ประวัติการทำงาน_AuditLog_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.xlsx`);
                 } catch(e) {
-                    alert("❌ เกิดข้อผิดพลาดในการโหลด Excel");
+                    alert("❌ เกิดข้อผิดพลาดในการโหลด Excel: " + e.message);
                 }
             },
 
             // --- ดึงข้อมูลเมนูออกเป็น Excel ---
             exportMenuToExcel: function() {
-                if(allMenu.length === 0) return alert("ไม่มีข้อมูลเมนูในระบบครับ");
-                let csvContent = "\uFEFF";
-                csvContent += "รหัสเมนู,ชื่อเมนู,หมวดหมู่,ราคา,รูปแบบ,ท็อปปิ้ง,รูปภาพ\n";
-                
-                const sortedMenu = [...allMenu].sort((a,b) => (a.Category||'').localeCompare(b.Category||''));
-                
-                sortedMenu.forEach(item => {
-                    let rawKey = item._key || '';
-                    let key = "";
-                    if (rawKey.startsWith('-') || rawKey.startsWith('=')) {
-                        key = `"=""${rawKey.replace(/"/g, '""')}"""`;
-                    } else {
-                        key = `"${rawKey.replace(/"/g, '""')}"`;
-                    }
-                    let name = `"${(item.Name || '').replace(/"/g, '""')}"`;
-                    let cat = `"${(item.Category || '').replace(/"/g, '""')}"`;
-                    let price = item.Price || 0;
-                    
-                    let variants = "";
-                    if(item.Variants && item.Variants.length > 0) {
-                        if(item.Variants.length === 1 && item.Variants[0].name === "ปกติ") {
-                            variants = "";
-                        } else {
-                            variants = `"${item.Variants.map(v => `${v.name}:${v.price}`).join(' | ')}"`;
-                        }
-                    }
-
-                    let optSets = "";
-                    if(item.OptionSets && item.OptionSets.length > 0) {
-                        let setNames = item.OptionSets.map(optId => {
-                            let f = globalOptions.find(o => o.id === optId);
-                            return f ? f.name : optId;
-                        });
-                        optSets = `"${setNames.join(' | ').replace(/"/g, '""')}"`;
-                    }
-
-                    let img = '""';
-                    if (item.ImageURL) {
-                        if (item.ImageURL.startsWith("data:image/")) {
-                            img = `"[รูปภาพจากกล้อง]"`;
-                        } else if (item.ImageURL !== "-") {
-                            img = `"${item.ImageURL.replace(/"/g, '""')}"`;
-                        }
-                    }
-
-                    csvContent += [key, name, cat, price, variants, optSets, img].join(",") + "\n";
+                if (allMenu.length === 0) return alert("ไม่มีข้อมูลเมนูในระบบครับ");
+                const rows = [["รหัสเมนู", "ชื่อเมนู", "หมวดหมู่", "ราคา", "รูปแบบ", "ท็อปปิ้ง", "รูปภาพ"]];
+                [...allMenu].sort((a, b) => (a.Category || '').localeCompare(b.Category || '')).forEach(item => {
+                    const variants = (item.Variants || []);
+                    const variantText = variants.length === 1 && variants[0].name === 'ปกติ'
+                        ? '' : variants.map(v => `${v.name}:${v.price}`).join(' | ');
+                    const options = (item.OptionSets || []).map(id => {
+                        const option = globalOptions.find(o => o.id === id);
+                        return option ? option.name : id;
+                    }).join(' | ');
+                    const image = (item.ImageURL || '');
+                    rows.push([String(item._key || ''), item.Name || '', item.Category || '',
+                        Number(item.Price) || 0, variantText, options,
+                        image.startsWith('data:image/') ? '[รูปภาพจากกล้อง]' : image === '-' ? '' : image]);
                 });
-                
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `ฐานข้อมูลเมนูอาหาร_BDC_${new Date().toLocaleDateString('th-TH').replace(/\//g,'-')}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                window.exportRowsToXLSX(rows, 'เมนูอาหาร', `ฐานข้อมูลเมนูอาหาร_BDC_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.xlsx`);
             },
 
             // --- ดึงข้อมูลคลังท็อปปิ้งออกเป็น Excel ---
             exportOptionsToExcel: function() {
-                if(globalOptions.length === 0) return alert("ไม่มีข้อมูลคลังเซ็ตท็อปปิ้งในระบบครับ");
-                let csvContent = "\uFEFF";
-                csvContent += "ชื่อกลุ่มตัวเลือก,ประเภทการเลือก,รายการ (ชื่อ:ราคาบวกเพิ่ม)\n";
-                
+                if (globalOptions.length === 0) return alert("ไม่มีข้อมูลคลังเซ็ตท็อปปิ้งในระบบครับ");
+                const rows = [["ชื่อกลุ่มตัวเลือก", "ประเภทการเลือก", "รายการ (ชื่อ:ราคาบวกเพิ่ม)"]];
                 globalOptions.forEach(opt => {
-                    let name = `"${(opt.name || '-').replace(/"/g, '""')}"`;
-                    let type = `"${(opt.type || '-').replace(/"/g, '""')}"`;
-                    let items = "-";
-                    if(opt.items && opt.items.length > 0) {
-                        items = `"${opt.items.map(i => `${i.name}(+${i.price}บ.)`).join(' | ')}"`;
-                    }
-                    csvContent += [name, type, items].join(",") + "\n";
+                    rows.push([opt.name || '-', opt.type || '-',
+                        opt.items && opt.items.length ? opt.items.map(i => `${i.name}(+${i.price}บ.)`).join(' | ') : '-']);
                 });
-                
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.setAttribute("href", url);
-                link.setAttribute("download", `ฐานข้อมูลท็อปปิ้ง_BDC_${new Date().toLocaleDateString('th-TH').replace(/\//g,'-')}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                window.exportRowsToXLSX(rows, 'ท็อปปิ้ง', `ฐานข้อมูลท็อปปิ้ง_BDC_${new Date().toLocaleDateString('th-TH').replace(/\//g, '-')}.xlsx`);
             },
 
             // --- ระบบจัดการพนักงาน ---
